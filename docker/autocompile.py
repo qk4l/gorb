@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Usage:
 #   ./autocompile.py path ext1,ext2,extn cmd
@@ -46,7 +46,7 @@ def auto_compile(path, extension, cmd):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print >> sys.stderr, "Command line error: missing argument(s)."
+        print(sys.stderr, "Command line error: missing argument(s).")
         sys.exit(1)
 
     # Required arguments

@@ -38,15 +38,15 @@ import (
 
 var (
 	// Version get dynamically set to git rev by ldflags at build time
-	Version          = "DEV"
+	Version = "DEV"
 
-	debug            = flag.Bool("v", false, "enable verbose output")
-	device           = flag.String("i", "eth0", "default interface to bind services on")
-	flush            = flag.Bool("f", false, "flush IPVS pools on start")
-	listen           = flag.String("l", ":4672", "endpoint to listen for HTTP requests")
-	consul           = flag.String("c", "", "URL for Consul HTTP API")
-	vipInterface     = flag.String("vipi", "", "interface to add VIPs")
-	storeURLs        = flag.String("store", "", "comma delimited list of store urls for sync data. All urls must have" +
+	debug        = flag.Bool("v", false, "enable verbose output")
+	device       = flag.String("i", "eth0", "default interface to bind services on")
+	flush        = flag.Bool("f", false, "flush IPVS pools on start")
+	listen       = flag.String("l", ":4672", "endpoint to listen for HTTP requests")
+	consul       = flag.String("c", "", "URL for Consul HTTP API")
+	vipInterface = flag.String("vipi", "", "interface to add VIPs")
+	storeURLs    = flag.String("store", "", "comma delimited list of store urls for sync data. All urls must have"+
 		" identical schemes and paths.")
 	storeTimeout     = flag.Int64("store-sync-time", 60, "sync-time for store")
 	storeServicePath = flag.String("store-service-path", "services", "store service path")
@@ -83,11 +83,11 @@ func main() {
 	}
 
 	ctx, err := core.NewContext(core.ContextOptions{
-		Disco:            *consul,
-		Endpoints:        hostIPs,
-		Flush:            *flush,
-		ListenPort:       listenPort,
-		VipInterface:     *vipInterface})
+		Disco:        *consul,
+		Endpoints:    hostIPs,
+		Flush:        *flush,
+		ListenPort:   listenPort,
+		VipInterface: *vipInterface})
 
 	if err != nil {
 		log.Fatalf("error while initializing server context: %s", err)

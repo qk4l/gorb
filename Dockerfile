@@ -1,27 +1,28 @@
-FROM golang:1.8
+FROM golang:1.19
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN  apt-get update \
-  && apt-get install -y software-properties-common python-pip \
+  && apt-get install -y software-properties-common python3-pip \
   python-setuptools \
   python-dev \
   build-essential \
   libssl-dev \
-  libffi-dev \
-  && apt-get install --no-install-suggests --no-install-recommends -y \
+  libffi-dev
+RUN apt-get install --no-install-suggests --no-install-recommends -y \
   curl \
   git \
   build-essential \
-  python-netaddr \
+  python3-netaddr \
   unzip \
   vim \
   wget \
   inotify-tools \
+  dh-make-golang \
   && apt-get clean -y \
   && apt-get autoremove -y \
   && rm -rf /var/lib/apt/lists/* /tmp/*
 
-RUN pip install pyinotify
+RUN pip install pyinotify==0.9.6
 
 # install glide to manage dependencies
 ENV GLIDEVERSION=0.12.3

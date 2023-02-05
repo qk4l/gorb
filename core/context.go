@@ -40,19 +40,20 @@ import (
 var (
 	schedulerFlags = map[string]int{
 		"sh-fallback": gnl2go.IP_VS_SVC_F_SCHED_SH_FALLBACK,
-		"sh-port": gnl2go.IP_VS_SVC_F_SCHED_SH_PORT,
-		"flag-1": gnl2go.IP_VS_SVC_F_SCHED1,
-		"flag-2": gnl2go.IP_VS_SVC_F_SCHED2,
-		"flag-3": gnl2go.IP_VS_SVC_F_SCHED3,
+		"sh-port":     gnl2go.IP_VS_SVC_F_SCHED_SH_PORT,
+		"flag-1":      gnl2go.IP_VS_SVC_F_SCHED1,
+		"flag-2":      gnl2go.IP_VS_SVC_F_SCHED2,
+		"flag-3":      gnl2go.IP_VS_SVC_F_SCHED3,
 	}
 	ErrIpvsSyscallFailed = errors.New("error while calling into IPVS")
-	ErrObjectExists = errors.New("specified object already exists")
-	ErrObjectNotFound = errors.New("unable to locate specified object")
-	ErrIncompatibleAFs = errors.New("incompatible address families")
+	ErrObjectExists      = errors.New("specified object already exists")
+	ErrObjectNotFound    = errors.New("unable to locate specified object")
+	ErrIncompatibleAFs   = errors.New("incompatible address families")
 )
 
 type service struct {
 	options *ServiceOptions
+	svc     gnl2go.Service
 }
 
 type backend struct {
@@ -86,6 +87,9 @@ type Ipvs interface {
 	AddDestPort(vip string, vport uint16, rip string, rport uint16, protocol uint16, weight int32, fwd uint32) error
 	UpdateDestPort(vip string, vport uint16, rip string, rport uint16, protocol uint16, weight int32, fwd uint32) error
 	DelDestPort(vip string, vport uint16, rip string, rport uint16, protocol uint16) error
+	// Unforture not work =(
+	// GetPoolForService(svc gnl2go.Service) (gnl2go.Pool, error)
+	GetPools() ([]gnl2go.Pool, error)
 }
 
 // NewContext creates a new Context and initializes IPVS.
@@ -171,6 +175,26 @@ func (ctx *Context) Close() {
 	ctx.ipvs.Exit()
 }
 
+// ipvs.GetPoolForService() not works =( impement via iteration
+func (ctx *Context) GetPoolForService(svc gnl2go.Service) (gnl2go.Pool, error) {
+	ipvs_pools, err := ctx.ipvs.GetPools()
+	if err != nil {
+		log.Errorf("Failed to get pools from ipvs: %s", err)
+		return gnl2go.Pool{}, ErrIpvsSyscallFailed
+	}
+
+	log.Debugf("IPVS has %d polls", len(ipvs_pools))
+
+	for _, ipvs_pool := range ipvs_pools {
+		// TODO: Remove
+		// log.Debugf("Service: %#v\n", ipvs_pool.Service)
+		if ipvs_pool.Service.IsEqual(svc) {
+			return ipvs_pool, nil
+		}
+	}
+	return gnl2go.Pool{}, fmt.Errorf("service doesn't exist\n")
+}
+
 // CreateService registers a new virtual service with IPVS.
 func (ctx *Context) createService(vsID string, opts *ServiceOptions) error {
 	if err := opts.Validate(ctx.endpoint); err != nil {
@@ -184,7 +208,7 @@ func (ctx *Context) createService(vsID string, opts *ServiceOptions) error {
 	if ctx.vipInterface != nil {
 		ifName := ctx.vipInterface.Attrs().Name
 		vip := &netlink.Addr{IPNet: &net.IPNet{
-			net.ParseIP(opts.host.String()), net.IPv4Mask(255, 255, 255, 255)}}
+			IP: net.ParseIP(opts.host.String()), Mask: net.IPv4Mask(255, 255, 255, 255)}}
 		if err := netlink.AddrAdd(ctx.vipInterface, vip); err != nil {
 			log.Infof(
 				"failed to add VIP %s to interface '%s' for service [%s]: %s",
@@ -206,35 +230,51 @@ func (ctx *Context) createService(vsID string, opts *ServiceOptions) error {
 		}
 	}
 
+	var svc = gnl2go.Service{
+		Proto: opts.protocol,
+		VIP:   opts.host.String(),
+		Port:  opts.Port,
+		Sched: opts.Method,
+	}
+
 	var flags int
 	for _, flag := range strings.Split(opts.Flags, "|") {
 		flags = flags | schedulerFlags[flag]
+		if flags != 0 {
+			svc.Flags = gnl2go.U32ToBinFlags(uint32(flags))
+		}
 	}
 
-	if flags != 0 {
-		if err := ctx.ipvs.AddServiceWithFlags(
-			opts.host.String(),
-			opts.Port,
-			opts.protocol,
-			opts.Method,
-			gnl2go.U32ToBinFlags(uint32(flags)),
-		); err != nil {
-			log.Errorf("error while creating virtual service: %s", err)
-			return ErrIpvsSyscallFailed
-		}
+	_, err := ctx.GetPoolForService(svc)
+
+	if err == nil {
+		log.Infof("Service %s:%d already existed skip creation", svc.VIP, svc.Port)
 	} else {
-		if err := ctx.ipvs.AddService(
-			opts.host.String(),
-			opts.Port,
-			opts.protocol,
-			opts.Method,
-		); err != nil {
-			log.Errorf("error while creating virtual service: %s", err)
-			return ErrIpvsSyscallFailed
+		if flags != 0 {
+			if err := ctx.ipvs.AddServiceWithFlags(
+				svc.VIP,
+				svc.Port,
+				svc.Proto,
+				svc.Sched,
+				svc.Flags,
+			); err != nil {
+				log.Errorf("error while creating virtual service: %s", err)
+				return ErrIpvsSyscallFailed
+			}
+		} else {
+			if err := ctx.ipvs.AddService(
+				svc.VIP,
+				svc.Port,
+				svc.Proto,
+				svc.Sched,
+			); err != nil {
+				log.Errorf("error while creating virtual service: %s", err)
+				return ErrIpvsSyscallFailed
+			}
 		}
 	}
 
-	ctx.services[vsID] = &service{options: opts}
+	ctx.services[vsID] = &service{options: opts, svc: svc}
 
 	if err := ctx.disco.Expose(vsID, opts.host.String(), opts.Port); err != nil {
 		log.Errorf("error while exposing service to Disco: %s", err)
@@ -280,27 +320,49 @@ func (ctx *Context) createBackend(vsID, rsID string, opts *BackendOptions) error
 		opts.Port,
 		vsID)
 
-	// create backend to external store
-	if ctx.store != nil {
-		if err := ctx.store.CreateBackend(vsID, rsID, opts); err != nil {
-			log.Errorf("error while create backend : %s", err)
-			return err
-		}
+	var skipCreation bool
+
+	var newDest = gnl2go.Dest{
+		IP:     opts.host.String(),
+		Weight: int32(opts.Weight),
+		Port:   opts.Port,
 	}
 
-	if err := ctx.ipvs.AddDestPort(
-		vs.options.host.String(),
-		vs.options.Port,
-		opts.host.String(),
-		opts.Port,
-		vs.options.protocol,
-		int32(opts.Weight),
-		opts.methodID,
-	); err != nil {
-		log.Errorf("error while creating backend: %s", err)
+	pool, err := ctx.GetPoolForService(vs.svc)
+	if err != nil {
+		log.Errorf("Failed to get pool for service [%s]: %s", vs.svc, err)
 		return ErrIpvsSyscallFailed
 	}
 
+	for _, dest := range pool.Dests {
+		if dest.IsEqual(&newDest) {
+			log.Infof("Backend %s:%d already existed is service [%s]skip creation", newDest.IP, newDest.Port, vsID)
+			skipCreation = true
+		}
+	}
+
+	if skipCreation == false {
+		// create backend to external store
+		if ctx.store != nil {
+			if err := ctx.store.CreateBackend(vsID, rsID, opts); err != nil {
+				log.Errorf("error while create backend : %s", err)
+				return err
+			}
+		}
+
+		if err := ctx.ipvs.AddDestPort(
+			vs.options.host.String(),
+			vs.options.Port,
+			newDest.IP,
+			newDest.Port,
+			vs.options.protocol,
+			newDest.Weight,
+			opts.methodID,
+		); err != nil {
+			log.Errorf("error while creating backend: %s", err)
+			return ErrIpvsSyscallFailed
+		}
+	}
 	ctx.backends[rsID] = &backend{options: opts, service: vs, monitor: p}
 
 	// Fire off the configured pulse goroutine, attach it to the Context.
@@ -377,7 +439,7 @@ func (ctx *Context) removeService(vsID string) (*ServiceOptions, error) {
 	if ctx.vipInterface != nil && vs.options.delIfAddr == true {
 		ifName := ctx.vipInterface.Attrs().Name
 		vip := &netlink.Addr{IPNet: &net.IPNet{
-			net.ParseIP(vs.options.host.String()), net.IPv4Mask(255, 255, 255, 255)}}
+			IP: net.ParseIP(vs.options.host.String()), Mask: net.IPv4Mask(255, 255, 255, 255)}}
 		if err := netlink.AddrDel(ctx.vipInterface, vip); err != nil {
 			log.Infof(
 				"failed to delete VIP %s to interface '%s' for service [%s]: %s",
@@ -568,10 +630,10 @@ func (ctx *Context) Synchronize(storeServices map[string]*ServiceOptions, storeB
 
 	log.Debugf("============================== SYNC ========================================")
 	for k, v := range storeServices {
-		log.Debugf("SERVICE[%s]: %s", k, v)
+		log.Debugf("SERVICE[%s]: %#v", k, v)
 	}
 	for k, v := range storeBackends {
-		log.Debugf("  BACKEND[%s]: %s", k, v)
+		log.Debugf("  BACKEND[%s]: %#v", k, v)
 	}
 	defer log.Debugf("============================================================================")
 
