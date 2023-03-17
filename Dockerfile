@@ -17,7 +17,8 @@ RUN apt-get install --no-install-suggests --no-install-recommends -y \
   vim \
   wget \
   inotify-tools \
-  dh-make-golang \
+  dh-golang \
+  golang-any \
   && apt-get clean -y \
   && apt-get autoremove -y \
   && rm -rf /var/lib/apt/lists/* /tmp/*
@@ -31,7 +32,7 @@ RUN mkdir glide-install ; tar xzf glide-v${GLIDEVERSION}-linux-amd64.tar.gz -C g
 RUN mv glide-install/linux-amd64/glide /usr/local/bin/ ; rm -rf glide-install
 
 # Grab the source code and add it to the workspace.
-ENV PATHWORK=/go/src/github.com/kobolog/gorb
+ENV PATHWORK=/go/src/github.com/qk4l/gorb
 ADD ./ $PATHWORK
 WORKDIR $PATHWORK
 

@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kobolog/gorb/util"
+	"github.com/qk4l/gorb/util"
 )
 
 // Possible validation errors.

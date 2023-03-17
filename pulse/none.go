@@ -21,7 +21,7 @@
 package pulse
 
 import (
-	"github.com/kobolog/gorb/util"
+	"github.com/qk4l/gorb/util"
 )
 
 type constantDriver struct {

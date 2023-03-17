@@ -17,37 +17,37 @@ var (
 		Namespace: namespace,
 		Name:      "service_health",
 		Help:      "Health of the load balancer service",
-	}, []string{"name", "host", "port", "protocol"})
+	}, []string{"service_name", "service_host", "service_port", "protocol"})
 
 	serviceBackends = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "service_backends",
 		Help:      "Number of backends in the load balancer service",
-	}, []string{"name", "host", "port", "protocol"})
+	}, []string{"service_name", "service_host", "service_port", "protocol"})
 
 	serviceBackendUptimeTotal = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "service_backend_uptime_seconds",
 		Help:      "Uptime in seconds of a backend service",
-	}, []string{"service_name", "name", "host", "port"})
+	}, []string{"service_name", "backend_name", "backend_host", "backend_port"})
 
 	serviceBackendHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "service_backend_health",
 		Help:      "Health of a backend service",
-	}, []string{"service_name", "name", "host", "port"})
+	}, []string{"service_name", "backend_name", "backend_host", "backend_port"})
 
 	serviceBackendStatus = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "service_backend_status",
 		Help:      "Status of a backend service",
-	}, []string{"service_name", "name", "host", "port"})
+	}, []string{"service_name", "backend_name", "backend_host", "backend_port"})
 
 	serviceBackendWeight = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "service_backend_weight",
 		Help:      "Weight of a backend service",
-	}, []string{"service_name", "name", "host", "port"})
+	}, []string{"service_name", "backend_name", "backend_host", "backend_port"})
 )
 
 type Exporter struct {

@@ -21,7 +21,7 @@
 package disco
 
 import (
-	"github.com/kobolog/gorb/util"
+	"github.com/qk4l/gorb/util"
 )
 
 // Driver provides the actual implementation for the Discovery.

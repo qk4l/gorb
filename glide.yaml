@@ -1,4 +1,4 @@
-package: github.com/kobolog/gorb
+package: github.com/qk4l/gorb
 import:
 - package: github.com/Sirupsen/logrus
 - package: github.com/fsouza/go-dockerclient

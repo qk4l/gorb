@@ -26,7 +26,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/kobolog/gorb/pulse"
+	"github.com/qk4l/gorb/pulse"
 
 	"github.com/tehnerd/gnl2go"
 )

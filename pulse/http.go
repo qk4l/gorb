@@ -21,13 +21,14 @@
 package pulse
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"time"
 
-	"github.com/kobolog/gorb/util"
+	"github.com/qk4l/gorb/util"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -45,19 +46,47 @@ type httpPulse struct {
 }
 
 func newGETDriver(host string, port uint16, opts util.DynamicMap) (Driver, error) {
-	c := http.Client{Timeout: 5 * time.Second, CheckRedirect: func(
-		req *http.Request,
-		via []*http.Request,
-	) error {
-		return errRedirects
-	}}
+	log.Debugf("Create pulse for %s:%d", host, port)
 
+	pulseScheme := opts.Get("scheme", "http").(string)
 	pulseHost := opts.Get("host", host).(string)
 	pulsePort := opts.Get("port", int(port)).(int)
+	pulseTimeout := opts.Get("timeout", 2).(int)
+
+	c := http.Client{}
+	urlHost := fmt.Sprintf("%s:%d", pulseHost, pulsePort)
+
+	if pulseScheme == "https" {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		c = http.Client{Timeout: time.Duration(pulseTimeout) * time.Second, Transport: tr, CheckRedirect: func(
+			req *http.Request,
+			via []*http.Request,
+		) error {
+			return errRedirects
+		}}
+		// Do not pass port to Host header
+		if pulsePort == 443 {
+			urlHost = pulseHost
+		}
+
+	} else {
+		c = http.Client{Timeout: time.Duration(pulseTimeout) * time.Second, CheckRedirect: func(
+			req *http.Request,
+			via []*http.Request,
+		) error {
+			return errRedirects
+		}}
+		// Do not pass port to Host header
+		if pulsePort == 80 {
+			urlHost = pulseHost
+		}
+	}
 
 	u := url.URL{
-		Scheme: "http",
-		Host:   fmt.Sprintf("%s:%d", pulseHost, pulsePort),
+		Scheme: pulseScheme,
+		Host:   urlHost,
 		Path:   opts.Get("path", "/").(string)}
 
 	r, err := http.NewRequest(opts.Get("method", "GET").(string), u.String(), nil)

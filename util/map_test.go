@@ -1,8 +1,9 @@
 package util
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDynamicMapWithIntValue(t *testing.T) {
@@ -11,7 +12,7 @@ func TestDynamicMapWithIntValue(t *testing.T) {
 	// Existing key.
 	assert.Equal(t, "value", do.Get("key", "default"))
 
-	// Default valut.
+	// Default value.
 	assert.Equal(t, "default", do.Get("other-key", "default"))
 
 	// Implicit conversion.

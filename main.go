@@ -26,8 +26,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/kobolog/gorb/core"
-	"github.com/kobolog/gorb/util"
+	"github.com/qk4l/gorb/core"
+	"github.com/qk4l/gorb/util"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
@@ -38,7 +38,7 @@ import (
 
 var (
 	// Version get dynamically set to git rev by ldflags at build time
-	Version = "DEV"
+	Version = "0.0.6"
 
 	debug        = flag.Bool("v", false, "enable verbose output")
 	device       = flag.String("i", "eth0", "default interface to bind services on")

@@ -26,14 +26,15 @@ import (
 	"net"
 	"sync"
 
-	"github.com/kobolog/gorb/disco"
-	"github.com/kobolog/gorb/pulse"
-	"github.com/kobolog/gorb/util"
+	"github.com/qk4l/gorb/disco"
+	"github.com/qk4l/gorb/pulse"
+	"github.com/qk4l/gorb/util"
 	"github.com/vishvananda/netlink"
+
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/tehnerd/gnl2go"
-	"strings"
 )
 
 // Possible runtime errors.

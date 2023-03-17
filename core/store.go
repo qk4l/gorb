@@ -88,7 +88,13 @@ func NewStore(storeURLs []string, storeServicePath, storeBackendPath string, syn
 		for {
 			select {
 			case <-storeTimer.C:
+				// TODO: Remote it
+				log.Debug("Run store store.Sync()")
 				store.Sync()
+				// TODO: Remote it
+				log.Debug("Finished store store.Sync()")
+			case <-time.After(60 * time.Second):
+				log.Error("Timeout 60s was reached for store.Sync()")
 			case <-store.stopCh:
 				storeTimer.Stop()
 				return

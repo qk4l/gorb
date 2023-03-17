@@ -3,7 +3,7 @@ package core
 import (
 	"testing"
 
-	"github.com/kobolog/gorb/pulse"
+	"github.com/qk4l/gorb/pulse"
 )
 
 func TestCollector(t *testing.T) {

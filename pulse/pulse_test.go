@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qk4l/gorb/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,6 +39,7 @@ func TestGenericOptions(t *testing.T) {
 		err  error
 	)
 
+	do := util.DynamicMap{"Port": 443}
 	// Automatic defaults – must fill in only omitted fields.
 	tests := []struct {
 		in *Options
@@ -50,6 +52,10 @@ func TestGenericOptions(t *testing.T) {
 		{
 			&Options{Type: "http"},
 			&Options{Type: "http", Interval: "1m"},
+		},
+		{
+			&Options{Type: "http", Args: do},
+			&Options{Type: "http", Interval: "1m", Args: do},
 		},
 		{
 			&Options{Interval: "5s"},
@@ -245,6 +251,19 @@ func TestGETDriver(t *testing.T) {
 
 		assert.Equal(t, test.rv, bp.driver.Check())
 	}
+}
+
+func TestGETDriverWithPort(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+		},
+	))
+
+	tcpAddr := ts.Listener.Addr().(*net.TCPAddr)
+
+	httpArgs := util.DynamicMap{"port": tcpAddr.Port, "scheme": "http"}
+	bp, _ := New("localhost", uint16(80), &Options{Type: "http", Args: httpArgs})
+	assert.Equal(t, StatusUp, bp.driver.Check())
 }
 
 func TestGETDriverInvalidURL(t *testing.T) {

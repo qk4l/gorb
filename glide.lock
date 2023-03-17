@@ -1,5 +1,5 @@
-hash: 9eadca1318878044596583ad0f018af6703020f18f219b84a7a1efb0bc29746e
-updated: 2023-01-30T18:50:16.760586823Z
+hash: c2f09a20eabbd674cf11e10c0935369e157a91c40ebc6646020dca4ef5efab2e
+updated: 2023-02-06T17:58:21.432225974Z
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -72,6 +72,10 @@ imports:
   version: d3a67ab21bc8a4643fa53a3633f2d951dd50c6ca
   subpackages:
   - coordinate
+- name: github.com/kobolog/gorb
+  version: 8240420c08e2486a34a043eff26df7d387791743
+  subpackages:
+  - util
 - name: github.com/matttproud/golang_protobuf_extensions
   version: c12348ce28de40eed0136aa2b644d0ee0650e56c
   subpackages:

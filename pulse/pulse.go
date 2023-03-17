@@ -24,7 +24,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/kobolog/gorb/util"
+	"github.com/qk4l/gorb/util"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -88,8 +88,12 @@ func (p *Pulse) Loop(id ID, pulseCh chan Update, consumerStopCh <-chan struct{})
 			select {
 			// Recalculate metrics and statistics and send them to Context.
 			case pulseCh <- Update{id, p.metrics.Update(p.driver.Check())}:
+			// prevent blocking if the consumer stops before us
 			case <-consumerStopCh:
-				// prevent blocking if the consumer stops before us
+			case <-time.After(p.interval):
+				log.Error("Timeout was reached for check: %s", id)
+				// pulseCh <- Update{id, p.metrics.Update(StatusDown)}
+				// log.Error("Changed backend status to %s", StatusDown)
 			}
 		case <-p.stopCh:
 			log.Infof("stopping pulse for %s", id)

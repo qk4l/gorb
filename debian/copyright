@@ -1,0 +1,17 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: gorb
+Upstream-Contact: https://github.com/kobolog/gorb
+Source: https://github.com/qk4l/gorb
+
+Files: *
+Copyright: 2023 Artem Aleksandrov
+License: GNU-3.0                               
+
+Files: debian/*
+Copyright: 2023 Artem Aleksnadrov
+License: LGPL-3.0
+Comment: Debian packaging is licensed under the same terms as upstream
+
+License: GNU-3.0
+~                                                                                                                                                                                                          
+~                                  

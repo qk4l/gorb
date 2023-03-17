@@ -24,8 +24,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/kobolog/gorb/core"
-	"github.com/kobolog/gorb/util"
+	"github.com/qk4l/gorb/core"
+	"github.com/qk4l/gorb/util"
 
 	"github.com/gorilla/mux"
 )

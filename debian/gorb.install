@@ -1,0 +1,3 @@
+#!/usr/bin/dh-exec
+#gorb => /usr/bin/gorb
+

@@ -21,7 +21,7 @@
 package core
 
 import (
-	"github.com/kobolog/gorb/pulse"
+	"github.com/qk4l/gorb/pulse"
 
 	log "github.com/Sirupsen/logrus"
 )

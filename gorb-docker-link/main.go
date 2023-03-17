@@ -30,9 +30,9 @@ import (
 	"path"
 	"strings"
 
-	"github.com/kobolog/gorb/core"
-	"github.com/kobolog/gorb/pulse"
-	"github.com/kobolog/gorb/util"
+	"github.com/qk4l/gorb/core"
+	"github.com/qk4l/gorb/pulse"
+	"github.com/qk4l/gorb/util"
 
 	log "github.com/Sirupsen/logrus"
 	gdc "github.com/fsouza/go-dockerclient"

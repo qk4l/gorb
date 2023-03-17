@@ -4,7 +4,7 @@
 This daemon is an IPVS frontend with a REST API interface. You can use it to control local IPVS instance in the Kernel to dynamically register virtual services and backends. It also supports basic TCP and HTTP health checks (called Gorb Pulse).
 
 - **TCP**: tries to establish a TCP connection to the backend's host and port.
-- **HTTP**: tries to fetch a specified location from backend's host and port.
+- **HTTP**: tries to fetch a specified location from backend's host and port. Supports https without TLS verify.
 
 Backends which fail to pass the health check will have weights set to zero to inhibit any traffic from being routed into their direction. When a backend comes back online, GORB won't immediately set its weight to the previous value, but instead gradually restore it based on backend's accumulated health statistics.
 
@@ -47,6 +47,8 @@ This scheduler has two flags: sh-fallback, which enables fallback to a different
         "type": "none|tcp|http",
         "args": {
             "method": "GET",
+            "scheme": "http|https",
+            "timeout": 2,
             "port": 54321,
             "path": "/health",
             "expect": 200

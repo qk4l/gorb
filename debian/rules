@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+
+%:
+
+	dh $@ --builddirectory=_build --buildsystem=golang # --with=golang
+
+
+override_dh_auto_install:
+	dh_auto_install -- --no-source
+	
+override_dh_dwz:
+	dh_dwz || :
+
+override_dh_golang:
+	echo "Skip"
