@@ -187,8 +187,6 @@ func (ctx *Context) GetPoolForService(svc gnl2go.Service) (gnl2go.Pool, error) {
 	log.Debugf("IPVS has %d polls", len(ipvs_pools))
 
 	for _, ipvs_pool := range ipvs_pools {
-		// TODO: Remove
-		// log.Debugf("Service: %#v\n", ipvs_pool.Service)
 		if ipvs_pool.Service.IsEqual(svc) {
 			return ipvs_pool, nil
 		}
@@ -336,7 +334,7 @@ func (ctx *Context) createBackend(vsID, rsID string, opts *BackendOptions) error
 	}
 
 	for _, dest := range pool.Dests {
-		if dest.IsEqual(&newDest) {
+		if dest.IP == newDest.IP && dest.Port == newDest.Port {
 			log.Infof("Backend %s:%d already existed is service [%s]skip creation", newDest.IP, newDest.Port, vsID)
 			skipCreation = true
 		}
@@ -591,9 +589,10 @@ func (ctx *Context) GetService(vsID string) (*ServiceInfo, error) {
 	}
 
 	if len(result.Backends) == 0 {
-		// Service without backends is healthy, albeit useless.
-		result.Health = 1.0
+		// Service without backends could not be healthy
+		result.Health = 0.0
 	} else {
+
 		result.Health /= float64(len(result.Backends))
 	}
 
@@ -675,4 +674,6 @@ func (ctx *Context) Synchronize(storeServices map[string]*ServiceOptions, storeB
 			log.Warnf("create backend error: %s", err.Error())
 		}
 	}
+
+	log.Info("Sucessuly synced with store")
 }

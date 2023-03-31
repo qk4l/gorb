@@ -75,6 +75,10 @@ Use glide to install dependencies:
 
 This should be done periodically to retrieve any updated dependencies.
 
+### Builduing in Docker
+
+Run `docker-compose up` to run build. DEB package will be in `_build` folder.
+
 ## TODO
 
 - [ ] Add more options for Gorb Pulse: thresholds, exponential back-offs and so on.

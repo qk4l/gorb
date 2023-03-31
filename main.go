@@ -22,6 +22,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -32,13 +33,15 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	_ "net/http/pprof"
 	"strings"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
 	// Version get dynamically set to git rev by ldflags at build time
-	Version = "0.0.6"
+	Version = "0.1.0"
 
 	debug        = flag.Bool("v", false, "enable verbose output")
 	device       = flag.String("i", "eth0", "default interface to bind services on")
@@ -80,6 +83,12 @@ func main() {
 		log.Fatalf("error while obtaining listening port from '%s': %s", *listen, err)
 	} else {
 		listenPort = uint16(listenAddr.Port)
+	}
+
+	if *debug {
+		go func() {
+			log.Println(http.ListenAndServe(fmt.Sprintf("%s:6061", listenAddr.IP), nil))
+		}()
 	}
 
 	ctx, err := core.NewContext(core.ContextOptions{

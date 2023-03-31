@@ -83,10 +83,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (e *Exporter) collect() error {
-	e.ctx.mutex.RLock()
-	defer e.ctx.mutex.RUnlock()
-
-	for serviceName, _ := range e.ctx.services {
+	for serviceName := range e.ctx.services {
 		service, err := e.ctx.GetService(serviceName)
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("error getting service: %s", serviceName))

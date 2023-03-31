@@ -1,3 +1,10 @@
+gorb (0.1.0) unstable; urgency=medium
+
+  * Fix problem with deadlock. Fix problem during start when ipvs table is not
+    empty and new backend is added, which is already exists.
+
+ -- Artem Aleksandrov <aaleksandrov@quantumbrains.com>  Mon, 27 Mar 2023 09:55:00 +0000
+
 gorb (0.0.6) unstable; urgency=medium
 
   * Remove port from Host header if it is default for scheme

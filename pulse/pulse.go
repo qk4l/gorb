@@ -90,8 +90,8 @@ func (p *Pulse) Loop(id ID, pulseCh chan Update, consumerStopCh <-chan struct{})
 			case pulseCh <- Update{id, p.metrics.Update(p.driver.Check())}:
 			// prevent blocking if the consumer stops before us
 			case <-consumerStopCh:
-			case <-time.After(p.interval):
-				log.Error("Timeout was reached for check: %s", id)
+				// case <-time.After(p.interval):
+				// log.Errorf("Timeout was reached for check: %s", id)
 				// pulseCh <- Update{id, p.metrics.Update(StatusDown)}
 				// log.Error("Changed backend status to %s", StatusDown)
 			}
@@ -104,7 +104,7 @@ func (p *Pulse) Loop(id ID, pulseCh chan Update, consumerStopCh <-chan struct{})
 		// TODO(@kobolog): Add exponential back-offs, thresholds.
 		interval = p.interval
 
-		log.Debugf("current pulse for %s: %s", id, p.metrics.Status.String())
+		log.Infof("current pulse for %s: %s", id, p.metrics.Status.String())
 	}
 }
 
