@@ -52,6 +52,7 @@ func newGETDriver(host string, port uint16, opts util.DynamicMap) (Driver, error
 	pulseHost := opts.Get("host", host).(string)
 	pulsePort := opts.Get("port", int(port)).(int)
 	pulseTimeout := opts.Get("timeout", 2).(int)
+	pulsePath := opts.Get("path", "/").(string)
 
 	c := http.Client{}
 	urlHost := fmt.Sprintf("%s:%d", pulseHost, pulsePort)
@@ -84,10 +85,18 @@ func newGETDriver(host string, port uint16, opts util.DynamicMap) (Driver, error
 		}
 	}
 
+	pulsePath_parsed, err := url.Parse(pulsePath)
+	if err != nil {
+		log.Errorf("failed to parse %s for backend %s", pulsePath, pulseHost)
+		return nil, err
+	}
+
 	u := url.URL{
-		Scheme: pulseScheme,
-		Host:   urlHost,
-		Path:   opts.Get("path", "/").(string)}
+		Scheme:   pulseScheme,
+		Host:     urlHost,
+		Path:     pulsePath_parsed.EscapedPath(),
+		RawQuery: pulsePath_parsed.RawQuery,
+	}
 
 	r, err := http.NewRequest(opts.Get("method", "GET").(string), u.String(), nil)
 	if err != nil {

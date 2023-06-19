@@ -261,7 +261,7 @@ func TestGETDriverWithPort(t *testing.T) {
 
 	tcpAddr := ts.Listener.Addr().(*net.TCPAddr)
 
-	httpArgs := util.DynamicMap{"port": tcpAddr.Port, "scheme": "http"}
+	httpArgs := util.DynamicMap{"port": tcpAddr.Port, "scheme": "http", "path": "path?arg1=value1"}
 	bp, _ := New("localhost", uint16(80), &Options{Type: "http", Args: httpArgs})
 	assert.Equal(t, StatusUp, bp.driver.Check())
 }

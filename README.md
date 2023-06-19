@@ -77,7 +77,8 @@ This should be done periodically to retrieve any updated dependencies.
 
 ### Builduing in Docker
 
-Run `docker-compose up` to run build. DEB package will be in `_build` folder.
+1. Change `debian/changelog` file
+2. Run `docker-compose up` to run build. DEB package will be in `_build` folder.
 
 ## TODO
 

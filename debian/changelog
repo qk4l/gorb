@@ -1,3 +1,9 @@
+gorb (0.1.1) unstable; urgency=medium
+
+  * Allow to pass http arguments via path for pulse check
+
+ -- Artem Aleksandrov <aaleksandrov@quantumbrains.com>  Mon, 19 Jun 2023 12:14:00 +0000
+
 gorb (0.1.0) unstable; urgency=medium
 
   * Fix problem with deadlock. Fix problem during start when ipvs table is not
