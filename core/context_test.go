@@ -3,12 +3,13 @@ package core
 import (
 	"testing"
 
+	"syscall"
+
 	"github.com/qk4l/gorb/disco"
 	"github.com/qk4l/gorb/pulse"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/tehnerd/gnl2go"
-	"syscall"
 )
 
 type fakeDisco struct {
@@ -195,6 +196,21 @@ func TestPulseUpdateRemovesStashWhenDeletedAfterNotification(t *testing.T) {
 	c.processPulseUpdate(stash, pulse.Update{pulse.ID{VsID: vsID, RsID: rsID}, pulse.Metrics{Status: pulse.StatusRemoved}})
 
 	assert.Empty(t, stash)
+	mockIpvs.AssertExpectations(t)
+}
+
+func TestStatusDownDuringIncreasingWeight(t *testing.T) {
+	stash := map[pulse.ID]int32{pulse.ID{VsID: vsID, RsID: rsID}: int32(100)}
+	backends := map[string]*backend{rsID: &backend{service: &virtualService, options: &BackendOptions{}}}
+	mockIpvs := &fakeIpvs{}
+
+	c := newRoutineContext(backends, mockIpvs)
+
+	mockIpvs.On("UpdateDestPort", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, int32(0), mock.Anything).Return(nil)
+	c.processPulseUpdate(stash, pulse.Update{pulse.ID{VsID: vsID, RsID: rsID}, pulse.Metrics{Status: pulse.StatusDown, Health: 0.5}})
+
+	assert.Equal(t, len(stash), 1)
+	assert.Equal(t, stash[pulse.ID{VsID: vsID, RsID: rsID}], int32(100))
 	mockIpvs.AssertExpectations(t)
 }
 

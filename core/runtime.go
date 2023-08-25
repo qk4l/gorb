@@ -82,13 +82,13 @@ func (ctx *Context) processPulseUpdate(stash map[pulse.ID]int32, u pulse.Update)
 		}
 
 	case pulse.StatusDown:
-		if _, exists := stash[u.Source]; exists {
-			return
-		}
-
+		// Always set backend weight to 0 if StatusDown
 		if weight, err := ctx.UpdateBackend(vsID, rsID, 0); err != nil {
 			log.Errorf("error while stashing a backend: %s", err)
 		} else {
+			if _, exists := stash[u.Source]; exists {
+				return
+			}
 			stash[u.Source] = weight
 		}
 	}

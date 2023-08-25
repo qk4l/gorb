@@ -329,7 +329,7 @@ func (ctx *Context) createBackend(vsID, rsID string, opts *BackendOptions) error
 
 	pool, err := ctx.GetPoolForService(vs.svc)
 	if err != nil {
-		log.Errorf("Failed to get pool for service [%s]: %s", vs.svc, err)
+		log.Errorf("Failed to get pool for service [%s]: %s", vs.svc.VIP, err)
 		return ErrIpvsSyscallFailed
 	}
 

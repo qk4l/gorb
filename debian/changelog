@@ -1,3 +1,10 @@
+gorb (0.1.2) unstable; urgency=medium
+
+  * Fix bug which leaves backend with non zero weight if it down during
+    restore
+
+ -- Artem Aleksandrov <aaleksandrov@quantumbrains.com>  Fri, 25 Aug 2023 16:03:00 +0000
+
 gorb (0.1.1) unstable; urgency=medium
 
   * Allow to pass http arguments via path for pulse check
