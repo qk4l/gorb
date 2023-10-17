@@ -1,6 +1,7 @@
 package core
 
 import (
+	"crypto/tls"
 	"errors"
 	"net/url"
 	"path"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"encoding/json"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/libkv"
 	"github.com/docker/libkv/store"
@@ -25,7 +27,7 @@ type Store struct {
 	stopCh           chan struct{}
 }
 
-func NewStore(storeURLs []string, storeServicePath, storeBackendPath string, syncTime int64, context *Context) (*Store, error) {
+func NewStore(storeURLs []string, storeServicePath, storeBackendPath string, syncTime int64, useTLS bool, context *Context) (*Store, error) {
 	var scheme string
 	var storePath string
 	var hosts []string
@@ -61,12 +63,21 @@ func NewStore(storeURLs []string, storeServicePath, storeBackendPath string, syn
 	default:
 		return nil, errors.New("unsupported uri scheme : " + scheme)
 	}
+
+	storeConfig := &store.Config{
+		ConnectionTimeout: 10 * time.Second,
+	}
+
+	if useTLS {
+		storeConfig.TLS = &tls.Config{
+			InsecureSkipVerify: false,
+		}
+	}
+
 	kvstore, err := libkv.NewStore(
 		backend,
 		hosts,
-		&store.Config{
-			ConnectionTimeout: 10 * time.Second,
-		},
+		storeConfig,
 	)
 	if err != nil {
 		return nil, err

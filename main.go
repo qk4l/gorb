@@ -41,7 +41,7 @@ import (
 
 var (
 	// Version get dynamically set to git rev by ldflags at build time
-	Version = "0.1.2"
+	Version = "0.2.0"
 
 	debug        = flag.Bool("v", false, "enable verbose output")
 	device       = flag.String("i", "eth0", "default interface to bind services on")
@@ -51,7 +51,8 @@ var (
 	vipInterface = flag.String("vipi", "", "interface to add VIPs")
 	storeURLs    = flag.String("store", "", "comma delimited list of store urls for sync data. All urls must have"+
 		" identical schemes and paths.")
-	storeTimeout     = flag.Int64("store-sync-time", 60, "sync-time for store")
+	storeUseTLS      = flag.Bool("store-use-tls", false, "Use TLS to connect to store backend")
+	storeSyncTime    = flag.Int64("store-sync-time", 60, "sync-time for store")
 	storeServicePath = flag.String("store-service-path", "services", "store service path")
 	storeBackendPath = flag.String("store-backend-path", "backends", "store backend path")
 )
@@ -108,7 +109,7 @@ func main() {
 	// sync with external store
 	if storeURLs != nil && len(*storeURLs) > 0 {
 		urls := strings.Split(*storeURLs, ",")
-		store, err := core.NewStore(urls, *storeServicePath, *storeBackendPath, *storeTimeout, ctx)
+		store, err := core.NewStore(urls, *storeServicePath, *storeBackendPath, *storeSyncTime, *storeUseTLS, ctx)
 		if err != nil {
 			log.Fatalf("error while initializing external store sync: %s", err)
 		}

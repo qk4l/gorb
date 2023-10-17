@@ -3,10 +3,10 @@ package core
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/docker/libkv"
-	libkvmock "github.com/docker/libkv/store/mock"
 	"github.com/docker/libkv/store"
+	libkvmock "github.com/docker/libkv/store/mock"
+	"github.com/stretchr/testify/assert"
 )
 
 type storeMock struct {
@@ -28,7 +28,7 @@ func TestMultipleURLs(t *testing.T) {
 	m.On("List", "/").Return([]*store.KVPair{}, nil)
 
 	storeURLs := []string{"mock://127.0.0.1:2000", "mock://127.0.0.2:2001", "mock://127.0.0.3:2002"}
-	store, err := NewStore(storeURLs, "/", "/", 60, &Context{})
+	store, err := NewStore(storeURLs, "/", "/", 60, false, &Context{})
 
 	assert.NoError(err)
 	assert.Equal([]string{"127.0.0.1:2000", "127.0.0.2:2001", "127.0.0.3:2002"}, m.Endpoints)
@@ -43,7 +43,7 @@ func TestErrorIfSchemeMismatch(t *testing.T) {
 	m.On("List", "/").Return([]*store.KVPair{}, nil)
 
 	storeURLs := []string{"mock://127.0.0.1:2000", "mismatch://127.0.0.2:2001", "mock://127.0.0.3:2002"}
-	_, err := NewStore(storeURLs, "/", "/", 60, &Context{})
+	_, err := NewStore(storeURLs, "/", "/", 60, false, &Context{})
 
 	assert.Error(err)
 }
@@ -55,7 +55,7 @@ func TestErrorIfPathMismatch(t *testing.T) {
 	m.On("List", "/").Return([]*store.KVPair{}, nil)
 
 	storeURLs := []string{"mock://127.0.0.1:2000", "mock://127.0.0.2:2001/mismatched/path/", "mock://127.0.0.3:2002"}
-	_, err := NewStore(storeURLs, "/", "/", 60, &Context{})
+	_, err := NewStore(storeURLs, "/", "/", 60, false, &Context{})
 
 	assert.Error(err)
 }

@@ -77,8 +77,9 @@ This should be done periodically to retrieve any updated dependencies.
 
 ### Builduing in Docker
 
-1. Change `debian/changelog` file
-2. Run `docker-compose up` to run build. DEB package will be in `_build` folder.
+1. Change Version in main.go
+2. Change `debian/changelog` file
+3. Run `docker-compose up` to run build. DEB package will be in `_build` folder.
 
 ## TODO
 
