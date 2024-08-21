@@ -30,8 +30,8 @@ import (
 	"github.com/qk4l/gorb/core"
 	"github.com/qk4l/gorb/util"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 
 	_ "net/http/pprof"
 	"strings"
