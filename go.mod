@@ -1,4 +1,4 @@
-module main
+module github.com/DumbHorse/gorb
 
 go 1.22.3
 
