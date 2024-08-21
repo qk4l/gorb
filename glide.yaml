@@ -1,6 +1,6 @@
 package: github.com/qk4l/gorb
 import:
-- package: github.com/Sirupsen/logrus
+- package: github.com/sirupsen/logrus
 - package: github.com/fsouza/go-dockerclient
 - package: github.com/gorilla/mux
 - package: github.com/tehnerd/gnl2go

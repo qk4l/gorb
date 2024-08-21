@@ -10,13 +10,13 @@ import (
 
 	"encoding/json"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/docker/libkv"
 	"github.com/docker/libkv/store"
 	"github.com/docker/libkv/store/boltdb"
 	"github.com/docker/libkv/store/consul"
 	"github.com/docker/libkv/store/etcd"
 	"github.com/docker/libkv/store/zookeeper"
+	log "github.com/sirupsen/logrus"
 )
 
 type Store struct {

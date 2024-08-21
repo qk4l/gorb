@@ -3,9 +3,9 @@ package core
 import (
 	"fmt"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 )
 
 const (

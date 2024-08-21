@@ -26,7 +26,7 @@ import (
 
 	"github.com/qk4l/gorb/util"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // Driver provides the actual health check for Pulse.
