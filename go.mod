@@ -8,7 +8,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.20.1
-	github.com/qk4l/gorb v0.0.0-20231017175645-4a5e167d8a40
+	github.com/DumbHorse/gorb v0.0.0-20231017175645-4a5e167d8a40
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 	github.com/tehnerd/gnl2go v0.0.0-20161218223753-101b5c6e2d44
