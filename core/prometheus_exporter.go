@@ -74,12 +74,22 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		log.Errorf("error collecting metrics: %s", err)
 		return
 	}
-	serviceHealth.Collect(ch)
-	serviceBackends.Collect(ch)
-	serviceBackendUptimeTotal.Collect(ch)
-	serviceBackendHealth.Collect(ch)
-	serviceBackendStatus.Collect(ch)
-	serviceBackendWeight.Collect(ch)
+	e.sendMetrics(ch)
+}
+
+func (e *Exporter) sendMetrics(ch chan<- prometheus.Metric) {
+	metrics := []*prometheus.GaugeVec{
+		serviceHealth,
+		serviceBackends,
+		serviceBackendUptimeTotal,
+		serviceBackendHealth,
+		serviceBackendStatus,
+		serviceBackendWeight,
+	}
+	for _, m := range metrics {
+		m.Collect(ch)
+		m.Reset()
+	}
 }
 
 func (e *Exporter) collect() error {
@@ -96,9 +106,7 @@ func (e *Exporter) collect() error {
 		serviceBackends.WithLabelValues(serviceName, service.Options.Host, fmt.Sprintf("%d", service.Options.Port),
 			service.Options.Protocol).
 			Set(float64(len(service.Backends)))
-
-		for i := 0; i < len(service.Backends); i++ {
-			backendName := service.Backends[i]
+		for _, backendName := range service.Backends {
 			backend, err := e.ctx.GetBackend(serviceName, backendName)
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("error getting backend %s from service %s", backendName, serviceName))
