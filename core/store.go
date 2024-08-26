@@ -10,13 +10,13 @@ import (
 
 	"encoding/json"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/docker/libkv"
 	"github.com/docker/libkv/store"
 	"github.com/docker/libkv/store/boltdb"
 	"github.com/docker/libkv/store/consul"
 	"github.com/docker/libkv/store/etcd"
 	"github.com/docker/libkv/store/zookeeper"
+	log "github.com/sirupsen/logrus"
 )
 
 type Store struct {
@@ -132,7 +132,7 @@ func (s *Store) Sync() {
 func (s *Store) getExternalServices() (map[string]*ServiceOptions, error) {
 	services := make(map[string]*ServiceOptions)
 	// build external service map (temporary all services)
-	kvlist, err := s.kvstore.List(s.storeServicePath)
+	kvlist, err := s.kvstore.List(s.storeServicePath + "/")
 	if err != nil {
 		if err == store.ErrKeyNotFound {
 			return services, nil
@@ -153,7 +153,7 @@ func (s *Store) getExternalServices() (map[string]*ServiceOptions, error) {
 func (s *Store) getExternalBackends() (map[string]*BackendOptions, error) {
 	backends := make(map[string]*BackendOptions)
 	// build external backend map
-	kvlist, err := s.kvstore.List(s.storeBackendPath)
+	kvlist, err := s.kvstore.List(s.storeBackendPath + "/")
 	if err != nil {
 		if err == store.ErrKeyNotFound {
 			return backends, nil

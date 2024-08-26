@@ -33,7 +33,7 @@ import (
 
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/tehnerd/gnl2go"
 )
 
@@ -46,15 +46,28 @@ var (
 		"flag-2":      gnl2go.IP_VS_SVC_F_SCHED2,
 		"flag-3":      gnl2go.IP_VS_SVC_F_SCHED3,
 	}
+	fallbackFlags = map[string]int16{
+		"fb-default":     Default,
+		"fb-zero-to-one": ZeroToOne,
+	}
 	ErrIpvsSyscallFailed = errors.New("error while calling into IPVS")
 	ErrObjectExists      = errors.New("specified object already exists")
 	ErrObjectNotFound    = errors.New("unable to locate specified object")
 	ErrIncompatibleAFs   = errors.New("incompatible address families")
 )
 
+// Fallback options
+const (
+	// Default - Set 0 weight to failed backend
+	Default int16 = iota
+	// ZeroToOne - Set weight 1 to all if all backends have StatusDown
+	ZeroToOne
+)
+
 type service struct {
-	options *ServiceOptions
-	svc     gnl2go.Service
+	options  *ServiceOptions
+	svc      gnl2go.Service
+	backends map[string]*backend
 }
 
 type backend struct {
@@ -273,7 +286,7 @@ func (ctx *Context) createService(vsID string, opts *ServiceOptions) error {
 		}
 	}
 
-	ctx.services[vsID] = &service{options: opts, svc: svc}
+	ctx.services[vsID] = &service{options: opts, svc: svc, backends: make(map[string]*backend)}
 
 	if err := ctx.disco.Expose(vsID, opts.host.String(), opts.Port); err != nil {
 		log.Errorf("error while exposing service to Disco: %s", err)
@@ -363,6 +376,7 @@ func (ctx *Context) createBackend(vsID, rsID string, opts *BackendOptions) error
 		}
 	}
 	ctx.backends[rsID] = &backend{options: opts, service: vs, monitor: p}
+	vs.backends[rsID] = ctx.backends[rsID]
 
 	// Fire off the configured pulse goroutine, attach it to the Context.
 	go ctx.backends[rsID].monitor.Loop(pulse.ID{VsID: vsID, RsID: rsID}, ctx.pulseCh, ctx.stopCh)
@@ -502,9 +516,10 @@ func (ctx *Context) RemoveService(vsID string) (*ServiceOptions, error) {
 
 // RemoveBackend deregisters a backend.
 func (ctx *Context) removeBackend(vsID, rsID string) (*BackendOptions, error) {
-	rs, exists := ctx.backends[rsID]
+	rs, existsRs := ctx.backends[rsID]
+	vs, existsVs := ctx.services[vsID]
 
-	if !exists {
+	if !existsRs || !existsVs {
 		return nil, ErrObjectNotFound
 	}
 
@@ -532,7 +547,7 @@ func (ctx *Context) removeBackend(vsID, rsID string) (*BackendOptions, error) {
 	}
 
 	delete(ctx.backends, rsID)
-
+	delete(vs.backends, rsID)
 	return rs.options, nil
 }
 
@@ -560,9 +575,20 @@ func (ctx *Context) ListServices() ([]string, error) {
 // ServiceInfo contains information about virtual service options,
 // its backends and overall virtual service health.
 type ServiceInfo struct {
-	Options  *ServiceOptions `json:"options"`
-	Health   float64         `json:"health"`
-	Backends []string        `json:"backends"`
+	Options       *ServiceOptions `json:"options"`
+	Health        float64         `json:"health"`
+	Backends      []string        `json:"backends"`
+	BackendsCount uint16          `json:"backends_count"`
+	FailedCount   uint16          `json:"failed_count"`
+	FallBack      string          `json:"fallback"`
+}
+
+func (service *ServiceInfo) IsAllFailed() bool {
+	if service.FailedCount == service.BackendsCount {
+		return true
+	} else {
+		return false
+	}
 }
 
 // GetService returns information about a virtual service.
@@ -576,24 +602,27 @@ func (ctx *Context) GetService(vsID string) (*ServiceInfo, error) {
 		return nil, ErrObjectNotFound
 	}
 
-	result := ServiceInfo{Options: vs.options}
-
-	// This is O(n), can be optimized with reverse backend map.
-	for rsID, backend := range ctx.backends {
-		if backend.service != vs {
-			continue
-		}
-
-		result.Backends = append(result.Backends, rsID)
-		result.Health += backend.metrics.Health
+	result := ServiceInfo{
+		Options:       vs.options,
+		Backends:      make([]string, 0, len(vs.backends)),
+		BackendsCount: uint16(len(vs.backends)),
+		FailedCount:   uint16(0),
+		FallBack:      vs.options.Fallback,
 	}
 
-	if len(result.Backends) == 0 {
+	if result.BackendsCount != 0 {
+		// Calculate backends health
+		for rsKey, rs := range vs.backends {
+			result.Health += rs.metrics.Health
+			if rs.metrics.Status == pulse.StatusDown {
+				result.FailedCount++
+			}
+			result.Backends = append(result.Backends, rsKey)
+		}
+		result.Health /= float64(len(result.Backends))
+	} else {
 		// Service without backends could not be healthy
 		result.Health = 0.0
-	} else {
-
-		result.Health /= float64(len(result.Backends))
 	}
 
 	return &result, nil

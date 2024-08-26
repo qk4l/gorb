@@ -78,8 +78,9 @@ func (f *fakeIpvs) GetPools() ([]gnl2go.Pool, error) {
 	return poolArray, nil
 }
 
-func newRoutineContext(backends map[string]*backend, ipvs Ipvs) *Context {
+func newRoutineContext(backends map[string]*backend, services map[string]*service, ipvs Ipvs) *Context {
 	c := newContext(ipvs, &fakeDisco{})
+	c.services = services
 	c.backends = backends
 	return c
 }
@@ -96,9 +97,10 @@ func newContext(ipvs Ipvs, disco disco.Driver) *Context {
 }
 
 var (
-	vsID           = "virtualServiceId"
-	rsID           = "realServerID"
-	virtualService = service{options: &ServiceOptions{Port: 80, Host: "localhost", Protocol: "tcp"}}
+	vsID                   = "virtualServiceId"
+	rsID                   = "realServerID"
+	virtualService         = service{options: &ServiceOptions{Port: 80, Host: "localhost", Protocol: "tcp"}}
+	virtualServiceFallBack = service{options: &ServiceOptions{Port: 80, Host: "localhost", Protocol: "tcp", Fallback: "fb-zero-to-one"}}
 )
 
 func TestServiceIsCreated(t *testing.T) {
@@ -134,11 +136,30 @@ func TestServiceIsCreatedWithShFlags(t *testing.T) {
 func TestPulseUpdateSetsBackendWeightToZeroOnStatusDown(t *testing.T) {
 	stash := make(map[pulse.ID]int32)
 	backends := map[string]*backend{rsID: &backend{service: &virtualService, options: &BackendOptions{Weight: 100}}}
+	services := map[string]*service{vsID: &virtualService}
+	services[vsID].backends = backends
 	mockIpvs := &fakeIpvs{}
 
-	c := newRoutineContext(backends, mockIpvs)
+	c := newRoutineContext(backends, services, mockIpvs)
 
 	mockIpvs.On("UpdateDestPort", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, int32(0), mock.Anything).Return(nil)
+
+	c.processPulseUpdate(stash, pulse.Update{pulse.ID{VsID: vsID, RsID: rsID}, pulse.Metrics{Status: pulse.StatusDown}})
+	assert.Equal(t, len(stash), 1)
+	assert.Equal(t, stash[pulse.ID{VsID: vsID, RsID: rsID}], int32(100))
+	mockIpvs.AssertExpectations(t)
+}
+
+func TestPulseUpdateSetsBackendWeightWithFallBackZeroToOne(t *testing.T) {
+	stash := make(map[pulse.ID]int32)
+	backends := map[string]*backend{rsID: &backend{service: &virtualService, options: &BackendOptions{Weight: 100}}}
+	services := map[string]*service{vsID: &virtualServiceFallBack}
+	services[vsID].backends = backends
+	mockIpvs := &fakeIpvs{}
+
+	c := newRoutineContext(backends, services, mockIpvs)
+
+	mockIpvs.On("UpdateDestPort", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, int32(1), mock.Anything).Return(nil)
 
 	c.processPulseUpdate(stash, pulse.Update{pulse.ID{VsID: vsID, RsID: rsID}, pulse.Metrics{Status: pulse.StatusDown}})
 	assert.Equal(t, len(stash), 1)
@@ -149,9 +170,11 @@ func TestPulseUpdateSetsBackendWeightToZeroOnStatusDown(t *testing.T) {
 func TestPulseUpdateIncreasesBackendWeightRelativeToTheHealthOnStatusUp(t *testing.T) {
 	stash := map[pulse.ID]int32{pulse.ID{VsID: vsID, RsID: rsID}: int32(12)}
 	backends := map[string]*backend{rsID: &backend{service: &virtualService, options: &BackendOptions{}}}
+	services := map[string]*service{vsID: &virtualService}
+	services[vsID].backends = backends
 	mockIpvs := &fakeIpvs{}
 
-	c := newRoutineContext(backends, mockIpvs)
+	c := newRoutineContext(backends, services, mockIpvs)
 
 	mockIpvs.On("UpdateDestPort", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, int32(6), mock.Anything).Return(nil)
 
@@ -164,9 +187,11 @@ func TestPulseUpdateIncreasesBackendWeightRelativeToTheHealthOnStatusUp(t *testi
 func TestPulseUpdateRemovesStashWhenBackendHasFullyRecovered(t *testing.T) {
 	stash := map[pulse.ID]int32{pulse.ID{VsID: vsID, RsID: rsID}: int32(12)}
 	backends := map[string]*backend{rsID: &backend{service: &virtualService, options: &BackendOptions{}}}
+	services := map[string]*service{vsID: &virtualService}
+	services[vsID].backends = backends
 	mockIpvs := &fakeIpvs{}
 
-	c := newRoutineContext(backends, mockIpvs)
+	c := newRoutineContext(backends, services, mockIpvs)
 
 	mockIpvs.On("UpdateDestPort", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, int32(12), mock.Anything).Return(nil)
 
@@ -178,9 +203,11 @@ func TestPulseUpdateRemovesStashWhenBackendHasFullyRecovered(t *testing.T) {
 func TestPulseUpdateRemovesStashWhenBackendIsDeleted(t *testing.T) {
 	stash := map[pulse.ID]int32{pulse.ID{VsID: vsID, RsID: rsID}: int32(0)}
 	backends := make(map[string]*backend)
+	services := map[string]*service{vsID: &virtualService}
+	services[vsID].backends = backends
 	mockIpvs := &fakeIpvs{}
 
-	c := newRoutineContext(backends, mockIpvs)
+	c := newRoutineContext(backends, services, mockIpvs)
 	c.processPulseUpdate(stash, pulse.Update{pulse.ID{VsID: vsID, RsID: rsID}, pulse.Metrics{}})
 
 	assert.Empty(t, stash)
@@ -190,9 +217,11 @@ func TestPulseUpdateRemovesStashWhenBackendIsDeleted(t *testing.T) {
 func TestPulseUpdateRemovesStashWhenDeletedAfterNotification(t *testing.T) {
 	stash := map[pulse.ID]int32{pulse.ID{VsID: vsID, RsID: rsID}: int32(0)}
 	backends := map[string]*backend{rsID: &backend{service: &virtualService, options: &BackendOptions{}}}
+	services := map[string]*service{vsID: &virtualService}
+	services[vsID].backends = backends
 	mockIpvs := &fakeIpvs{}
 
-	c := newRoutineContext(backends, mockIpvs)
+	c := newRoutineContext(backends, services, mockIpvs)
 	c.processPulseUpdate(stash, pulse.Update{pulse.ID{VsID: vsID, RsID: rsID}, pulse.Metrics{Status: pulse.StatusRemoved}})
 
 	assert.Empty(t, stash)
@@ -202,9 +231,11 @@ func TestPulseUpdateRemovesStashWhenDeletedAfterNotification(t *testing.T) {
 func TestStatusDownDuringIncreasingWeight(t *testing.T) {
 	stash := map[pulse.ID]int32{pulse.ID{VsID: vsID, RsID: rsID}: int32(100)}
 	backends := map[string]*backend{rsID: &backend{service: &virtualService, options: &BackendOptions{}}}
+	services := map[string]*service{vsID: &virtualService}
+	services[vsID].backends = backends
 	mockIpvs := &fakeIpvs{}
 
-	c := newRoutineContext(backends, mockIpvs)
+	c := newRoutineContext(backends, services, mockIpvs)
 
 	mockIpvs.On("UpdateDestPort", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, int32(0), mock.Anything).Return(nil)
 	c.processPulseUpdate(stash, pulse.Update{pulse.ID{VsID: vsID, RsID: rsID}, pulse.Metrics{Status: pulse.StatusDown, Health: 0.5}})

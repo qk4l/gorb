@@ -33,10 +33,11 @@ import (
 
 // Possible validation errors.
 var (
-	ErrMissingEndpoint = errors.New("endpoint information is missing")
-	ErrUnknownMethod   = errors.New("specified forwarding method is unknown")
-	ErrUnknownProtocol = errors.New("specified protocol is unknown")
-	ErrUnknownFlag     = errors.New("specified flag is unknown")
+	ErrMissingEndpoint     = errors.New("endpoint information is missing")
+	ErrUnknownMethod       = errors.New("specified forwarding method is unknown")
+	ErrUnknownProtocol     = errors.New("specified protocol is unknown")
+	ErrUnknownFlag         = errors.New("specified flag is unknown")
+	ErrUnknownFallbackFlag = errors.New("specified fallback flag is unknown")
 )
 
 // ContextOptions configure Context behavior.
@@ -56,6 +57,7 @@ type ServiceOptions struct {
 	Method     string `json:"method"`
 	Flags      string `json:"flags"`
 	Persistent bool   `json:"persistent"`
+	Fallback   string `json:"fallback"`
 
 	// Host string resolved to an IP, including DNS lookup.
 	host      net.IP
@@ -104,6 +106,16 @@ func (o *ServiceOptions) Validate(defaultHost net.IP) error {
 				return ErrUnknownFlag
 			}
 		}
+	}
+
+	if o.Fallback != "" {
+		for _, flag := range strings.Split(o.Fallback, "|") {
+			if _, ok := fallbackFlags[flag]; !ok {
+				return ErrUnknownFallbackFlag
+			}
+		}
+	} else {
+		o.Fallback = "fb-default"
 	}
 
 	if len(o.Method) == 0 {

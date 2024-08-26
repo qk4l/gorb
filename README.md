@@ -32,6 +32,7 @@ address automatically based on the configured default device:
     "method": "rr|wrr|lc|wlc|lblc|lblcr|sh|dh|sed|nq|...",
     "persistent": true,
     "flags": "sh-fallback|sh-port",
+    "fallback": "fb-default|fb-zero-to-one"
 }
 ```
 

@@ -27,7 +27,7 @@ import (
 
 	"github.com/qk4l/gorb/util"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type tcpPulse struct {
