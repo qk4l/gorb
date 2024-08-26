@@ -83,7 +83,23 @@ func (ctx *Context) processPulseUpdate(stash map[pulse.ID]int32, u pulse.Update)
 
 	case pulse.StatusDown:
 		// Always set backend weight to 0 if StatusDown
-		if weight, err := ctx.UpdateBackend(vsID, rsID, 0); err != nil {
+		backendWeight := int32(0)
+
+		// Apply Fallback rules
+		if serviceInfo, err := ctx.GetService(vsID); err != nil {
+			log.Errorf("error while getting service info for %s: %s", vsID, err)
+		} else {
+			if serviceInfo.IsAllFailed() {
+				switch fallbackFlags[serviceInfo.FallBack] {
+				case ZeroToOne:
+					backendWeight++
+				default:
+					log.Debug("use default fallback")
+				}
+			}
+		}
+
+		if weight, err := ctx.UpdateBackend(vsID, rsID, backendWeight); err != nil {
 			log.Errorf("error while stashing a backend: %s", err)
 		} else {
 			if _, exists := stash[u.Source]; exists {
