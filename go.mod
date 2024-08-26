@@ -1,8 +1,7 @@
-module github.com/DumbHorse/gorb
+module github.com/qk4l/gorb
 
 replace (
 	github.com/coreos/bbolt v1.3.11 => go.etcd.io/bbolt v1.3.11
-	github.com/qk4l/gorb => github.com/DumbHorse/gorb v0.0.0-20231017175645-4a5e167d8a40
 	google.golang.org/grpc => google.golang.org/grpc v1.29.1
 )
 
