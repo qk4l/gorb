@@ -1,3 +1,9 @@
+gorb (0.3.0) unstable; urgency=medium
+
+  * Support fallback when all backends is dead
+
+ -- Artem Aleksandrov <aaleksandrov@quantumbrains.com>  Mon, 26 Aug 2023 15:24:00 +0000
+
 gorb (0.2.0) unstable; urgency=medium
 
   * Support TLS for store backend

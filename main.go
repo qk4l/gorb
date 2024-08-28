@@ -41,7 +41,7 @@ import (
 
 var (
 	// Version get dynamically set to git rev by ldflags at build time
-	Version = "0.2.0"
+	Version = "0.3.0"
 
 	debug        = flag.Bool("v", false, "enable verbose output")
 	device       = flag.String("i", "eth0", "default interface to bind services on")

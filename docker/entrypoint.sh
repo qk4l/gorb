@@ -1,5 +1,6 @@
 #!/bin/bash
-glide install -v
+go mod tidy
+go build
 export PYTHONUNBUFFERED=0
 dpkg-buildpackage -b
 cp -a ../*.deb ./_build/
