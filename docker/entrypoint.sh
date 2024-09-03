@@ -1,7 +1,7 @@
 #!/bin/bash
 go mod tidy
-go build
+go mod vendor
 export PYTHONUNBUFFERED=0
+export DH_GOLANG_INSTALL_EXTRA='vendor'
 dpkg-buildpackage -b
 cp -a ../*.deb ./_build/
-#while /bin/true; do /autocompile.py $PWD ".go" "make binary" ; done
