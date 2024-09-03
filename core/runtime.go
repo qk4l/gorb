@@ -22,7 +22,6 @@ package core
 
 import (
 	"github.com/qk4l/gorb/pulse"
-
 	log "github.com/sirupsen/logrus"
 )
 
@@ -89,12 +88,13 @@ func (ctx *Context) processPulseUpdate(stash map[pulse.ID]int32, u pulse.Update)
 		if serviceInfo, err := ctx.GetService(vsID); err != nil {
 			log.Errorf("error while getting service info for %s: %s", vsID, err)
 		} else {
-			if serviceInfo.IsAllFailed() {
+			if serviceInfo.Health == 0 {
 				switch fallbackFlags[serviceInfo.FallBack] {
 				case ZeroToOne:
 					backendWeight++
+					log.Infof("service %s has zero health. use %s fallback strategy", vsID, serviceInfo.FallBack)
 				default:
-					log.Debug("use default fallback")
+					log.Infof("use default fallback strategy")
 				}
 			}
 		}
