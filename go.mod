@@ -5,7 +5,7 @@ replace (
 	google.golang.org/grpc => google.golang.org/grpc v1.29.1
 )
 
-go 1.22.3
+go 1.23
 
 require (
 	github.com/docker/libkv v0.2.1

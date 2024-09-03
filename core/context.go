@@ -579,16 +579,7 @@ type ServiceInfo struct {
 	Health        float64         `json:"health"`
 	Backends      []string        `json:"backends"`
 	BackendsCount uint16          `json:"backends_count"`
-	FailedCount   uint16          `json:"failed_count"`
 	FallBack      string          `json:"fallback"`
-}
-
-func (service *ServiceInfo) IsAllFailed() bool {
-	if service.FailedCount == service.BackendsCount {
-		return true
-	} else {
-		return false
-	}
 }
 
 // GetService returns information about a virtual service.
@@ -606,7 +597,6 @@ func (ctx *Context) GetService(vsID string) (*ServiceInfo, error) {
 		Options:       vs.options,
 		Backends:      make([]string, 0, len(vs.backends)),
 		BackendsCount: uint16(len(vs.backends)),
-		FailedCount:   uint16(0),
 		FallBack:      vs.options.Fallback,
 	}
 
@@ -614,9 +604,6 @@ func (ctx *Context) GetService(vsID string) (*ServiceInfo, error) {
 		// Calculate backends health
 		for rsKey, rs := range vs.backends {
 			result.Health += rs.metrics.Health
-			if rs.metrics.Status == pulse.StatusDown {
-				result.FailedCount++
-			}
 			result.Backends = append(result.Backends, rsKey)
 		}
 		result.Health /= float64(len(result.Backends))

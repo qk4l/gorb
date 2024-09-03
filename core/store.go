@@ -132,7 +132,7 @@ func (s *Store) Sync() {
 func (s *Store) getExternalServices() (map[string]*ServiceOptions, error) {
 	services := make(map[string]*ServiceOptions)
 	// build external service map (temporary all services)
-	kvlist, err := s.kvstore.List(s.storeServicePath + "/")
+	kvlist, err := s.kvstore.List(s.storeServicePath)
 	if err != nil {
 		if err == store.ErrKeyNotFound {
 			return services, nil
@@ -140,6 +140,9 @@ func (s *Store) getExternalServices() (map[string]*ServiceOptions, error) {
 		return nil, err
 	}
 	for _, kvpair := range kvlist {
+		if kvpair.Value == nil {
+			continue
+		}
 		id := s.getID(kvpair.Key)
 		var options ServiceOptions
 		if err := json.Unmarshal(kvpair.Value, &options); err != nil {
@@ -153,7 +156,7 @@ func (s *Store) getExternalServices() (map[string]*ServiceOptions, error) {
 func (s *Store) getExternalBackends() (map[string]*BackendOptions, error) {
 	backends := make(map[string]*BackendOptions)
 	// build external backend map
-	kvlist, err := s.kvstore.List(s.storeBackendPath + "/")
+	kvlist, err := s.kvstore.List(s.storeBackendPath)
 	if err != nil {
 		if err == store.ErrKeyNotFound {
 			return backends, nil
@@ -161,6 +164,9 @@ func (s *Store) getExternalBackends() (map[string]*BackendOptions, error) {
 		return nil, err
 	}
 	for _, kvpair := range kvlist {
+		if kvpair.Value == nil {
+			continue
+		}
 		var options BackendOptions
 		if err := json.Unmarshal(kvpair.Value, &options); err != nil {
 			return nil, err
