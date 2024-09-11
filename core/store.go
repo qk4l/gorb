@@ -189,6 +189,15 @@ func (s *Store) CreateService(vsID string, opts *ServiceOptions) error {
 	return nil
 }
 
+func (s *Store) UpdateService(vsID string, opts *ServiceOptions) error {
+	// put to store
+	if err := s.put(s.storeServicePath+"/"+vsID, opts, true); err != nil {
+		log.Errorf("error while put(update) service to store: %s", err)
+		return err
+	}
+	return nil
+}
+
 func (s *Store) CreateBackend(vsID, rsID string, opts *BackendOptions) error {
 	opts.VsID = vsID
 	// put to store
