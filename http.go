@@ -172,3 +172,37 @@ func (h backendStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, opts)
 	}
 }
+
+type storeUpdateHandler struct {
+	store *core.Store
+}
+
+func (h storeUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h.store != nil {
+		if err := h.store.UpdateStore(); err != nil {
+			writeError(w, err)
+		} else {
+			writeJSON(w, map[string]string{"status": "ok"})
+		}
+	} else {
+		writeError(w, core.ErrObjectNotFound)
+	}
+
+}
+
+type storeSyncStatusHandler struct {
+	store *core.Store
+}
+
+func (h storeSyncStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h.store != nil {
+		if syncStatus, err := h.store.StoreSyncStatus(); err != nil {
+			writeError(w, err)
+		} else {
+			writeJSON(w, syncStatus)
+		}
+	} else {
+		writeError(w, core.ErrObjectNotFound)
+	}
+
+}

@@ -673,12 +673,62 @@ func (ctx *Context) GetBackend(vsID, rsID string) (*BackendInfo, error) {
 	return &BackendInfo{rs.options, rs.metrics}, nil
 }
 
-// SetStore: if external kvstore exists, set store to context
+// SetStore if external kvstore exists, set store to context
 func (ctx *Context) SetStore(store *Store) {
 	ctx.store = store
 }
 
-func (ctx *Context) Synchronize(storeServices map[string]*ServiceOptions, storeBackends map[string]*BackendOptions) {
+func (ctx *Context) CompareWithStore(storeServices map[string]*ServiceOptions, storeBackends map[string]*BackendOptions) *StoreSyncStatus {
+	ctx.mutex.RLock()
+	defer ctx.mutex.RUnlock()
+	syncStatus := &StoreSyncStatus{}
+
+	// find removed services from store
+	for id, _ := range ctx.services {
+		if _, ok := storeServices[id]; !ok {
+			log.Debugf("service [%s] not found in store", id)
+			syncStatus.RemovedServices = append(syncStatus.RemovedServices, id)
+		}
+	}
+
+	// find removed backends from store
+	for id, backend := range ctx.backends {
+		if _, ok := storeBackends[id]; !ok {
+			vsID := "(unknown)"
+			if len(backend.options.VsID) > 0 {
+				vsID = backend.options.VsID
+			}
+			log.Debugf("backend [%s/%s] not found in store", vsID, id)
+			syncStatus.RemovedBackends = append(syncStatus.RemovedBackends, id)
+		}
+	}
+
+	// find updated services from store
+	for id, storeServiceOptions := range storeServices {
+		if service, ok := ctx.services[id]; ok {
+			if service.options.CompareStoreOptions(storeServiceOptions) {
+				continue
+			}
+			log.Debugf("service [%s] is outdated.", id)
+			syncStatus.NeedUpdateServices = append(syncStatus.NeedUpdateServices, id)
+		}
+	}
+
+	// find updated backends from store
+	for id, storeBackendOptions := range storeBackends {
+		if backend, ok := ctx.backends[id]; ok {
+			if backend.options.CompareStoreOptions(storeBackendOptions) {
+				continue
+			}
+			log.Debugf("backend [%s] is outdated.", id)
+			syncStatus.NeedUpdateBackends = append(syncStatus.NeedUpdateBackends, id)
+		}
+	}
+	syncStatus.Status = syncStatus.CheckStatus()
+	return syncStatus
+}
+
+func (ctx *Context) Synchronize(storeServices map[string]*ServiceOptions, storeBackends map[string]*BackendOptions, updateExtStore bool) error {
 	ctx.mutex.Lock()
 	defer ctx.mutex.Unlock()
 	defer log.Info("============================ END SYNC ============================")
@@ -689,7 +739,7 @@ func (ctx *Context) Synchronize(storeServices map[string]*ServiceOptions, storeB
 		log.Debugf("SERVICE[%s]: %#v", k, v)
 	}
 	for k, v := range storeBackends {
-		log.Debugf("  BACKEND[%s]: %#v", k, v)
+		log.Debugf("BACKEND[%s]: %#v", k, v)
 	}
 
 	log.Info("checks if services do not exist on external store and remove them")
@@ -697,7 +747,9 @@ func (ctx *Context) Synchronize(storeServices map[string]*ServiceOptions, storeB
 	for id, _ := range ctx.services {
 		if _, ok := storeServices[id]; !ok {
 			log.Debugf("service [%s] not found. removing", id)
-			ctx.removeService(id, false)
+			if _, err := ctx.removeService(id, false); err != nil {
+				return err
+			}
 		}
 	}
 	log.Info("update outdated services")
@@ -708,9 +760,13 @@ func (ctx *Context) Synchronize(storeServices map[string]*ServiceOptions, storeB
 			}
 			log.Debugf("service [%s] is outdated. updating", id)
 
-			ctx.removeService(id, false)
+			if _, err := ctx.removeService(id, false); err != nil {
+				return err
+			}
 		}
-		ctx.createService(id, storeServiceOptions, false)
+		if err := ctx.createService(id, storeServiceOptions, updateExtStore); err != nil {
+			return err
+		}
 	}
 
 	log.Info("checks if backends do not exist on external store and remove them")
@@ -722,7 +778,9 @@ func (ctx *Context) Synchronize(storeServices map[string]*ServiceOptions, storeB
 				vsID = backend.options.VsID
 			}
 			log.Debugf("backend [%s/%s] not found. removing", vsID, id)
-			ctx.removeBackend(vsID, id, false)
+			if _, err := ctx.removeBackend(vsID, id, false); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -733,12 +791,16 @@ func (ctx *Context) Synchronize(storeServices map[string]*ServiceOptions, storeB
 				continue
 			}
 			log.Debugf("backend [%s/%s] outdated. updating", storeBackendOptions.VsID, id)
-			ctx.removeBackend(storeBackendOptions.VsID, id, false)
+			if _, err := ctx.removeBackend(storeBackendOptions.VsID, id, false); err != nil {
+				return err
+			}
 		}
-		if err := ctx.createBackend(storeBackendOptions.VsID, id, storeBackendOptions, false); err != nil {
+		if err := ctx.createBackend(storeBackendOptions.VsID, id, storeBackendOptions, updateExtStore); err != nil {
 			log.Errorf("create backend error: %s", err.Error())
+			return err
 		}
 	}
 
 	log.Info("Successfully synced with store")
+	return nil
 }
