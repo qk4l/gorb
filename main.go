@@ -105,11 +105,11 @@ func main() {
 
 	// While it's not strictly required, close IPVS socket explicitly.
 	defer ctx.Close()
-
+	var store *core.Store
 	// sync with external store
 	if storeURLs != nil && len(*storeURLs) > 0 {
 		urls := strings.Split(*storeURLs, ",")
-		store, err := core.NewStore(urls, *storeServicePath, *storeBackendPath, *storeSyncTime, *storeUseTLS, ctx)
+		store, err = core.NewStore(urls, *storeServicePath, *storeBackendPath, *storeSyncTime, *storeUseTLS, ctx)
 		if err != nil {
 			log.Fatalf("error while initializing external store sync: %s", err)
 		}
@@ -127,6 +127,8 @@ func main() {
 	r.Handle("/service", serviceListHandler{ctx}).Methods("GET")
 	r.Handle("/service/{vsID}", serviceStatusHandler{ctx}).Methods("GET")
 	r.Handle("/service/{vsID}/{rsID}", backendStatusHandler{ctx}).Methods("GET")
+	r.Handle("/store/sync", storeUpdateHandler{store}).Methods("GET")
+	r.Handle("/store/sync/status", storeSyncStatusHandler{store}).Methods("GET")
 	r.Handle("/metrics", promhttp.Handler()).Methods("GET")
 
 	log.Infof("setting up HTTP server on %s", *listen)
