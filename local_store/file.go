@@ -36,7 +36,7 @@ func (local *LocalStore) ensureDirExist(dirPath string) error {
 		exist bool
 	)
 
-	exist, err = local.Exists(dirPath)
+	exist, err = local.exists(dirPath)
 	if err != nil {
 		return err
 	}
