@@ -145,6 +145,9 @@ func (o *ServiceOptions) CompareStoreOptions(options *ServiceOptions) bool {
 	if o.Persistent != options.Persistent {
 		return false
 	}
+	if o.Fallback != options.Fallback {
+		return false
+	}
 	return true
 }
 

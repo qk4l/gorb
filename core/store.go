@@ -113,20 +113,80 @@ func NewStore(storeURLs []string, storeServicePath, storeBackendPath string, syn
 }
 
 func (s *Store) Sync() {
+	services, backends, err := s.getStoreContent()
+	if err != nil {
+		log.Errorf("error while get data from ext-store: %s", err)
+		return
+	}
+	// synchronize context
+	s.ctx.Synchronize(services, backends, false)
+}
+
+// StoreSyncStatus store info about synchronization with ext-store
+type StoreSyncStatus struct {
+	// RemovedServices list of services that can be removed
+	RemovedServices []string `json:"removed_services"`
+	// RemovedBackends list of backends that can be removed
+	RemovedBackends []string `json:"removed_backends"`
+	// NeedUpdateServices list of services that can be updated
+	NeedUpdateServices []string `json:"need_update_services"`
+	// NeedUpdateBackends list of backends that can be updated
+	NeedUpdateBackends []string `json:"need_update_backends"`
+	// Status show final info about sync. May be 'need sync', 'ok'
+	Status string `json:"status"`
+}
+
+func (sync *StoreSyncStatus) CheckStatus() string {
+	if sync.NeedUpdateBackends != nil ||
+		sync.NeedUpdateServices != nil ||
+		sync.RemovedBackends != nil ||
+		sync.RemovedServices != nil {
+		return "need sync"
+	} else {
+		return "ok"
+	}
+}
+
+func (s *Store) StoreSyncStatus() (*StoreSyncStatus, error) {
+
+	services, backends, err := s.getStoreContent()
+	if err != nil {
+		return nil, err
+	}
+	return s.ctx.CompareWithStore(services, backends), nil
+}
+
+// UpdateStore update ext-kvstore
+func (s *Store) UpdateStore() error {
+	// build external services map
+	services, backends, err := s.getStoreContent()
+	if err != nil {
+		log.Errorf("error while get data from ext-store: %s", err)
+		return err
+	}
+
+	// synchronize context
+	if err = s.ctx.Synchronize(services, backends, true); err != nil {
+		return err
+	}
+	return nil
+}
+
+// getStoreContent extract service and backend from ext-store
+func (s *Store) getStoreContent() (map[string]*ServiceOptions, map[string]*BackendOptions, error) {
 	// build external services map
 	services, err := s.getExternalServices()
 	if err != nil {
-		log.Errorf("error while get services: %s", err)
-		return
+		log.Errorf("error while get services form ext-store: %s", err)
+		return nil, nil, err
 	}
 	// build external backends map
 	backends, err := s.getExternalBackends()
 	if err != nil {
-		log.Errorf("error while get backends: %s", err)
-		return
+		log.Errorf("error while get backends form ext-store: %s", err)
+		return nil, nil, err
 	}
-	// synchronize context
-	s.ctx.Synchronize(services, backends)
+	return services, backends, nil
 }
 
 func (s *Store) getExternalServices() (map[string]*ServiceOptions, error) {
@@ -184,6 +244,15 @@ func (s *Store) CreateService(vsID string, opts *ServiceOptions) error {
 	// put to store
 	if err := s.put(s.storeServicePath+"/"+vsID, opts, false); err != nil {
 		log.Errorf("error while put service to store: %s", err)
+		return err
+	}
+	return nil
+}
+
+func (s *Store) UpdateService(vsID string, opts *ServiceOptions) error {
+	// put to store
+	if err := s.put(s.storeServicePath+"/"+vsID, opts, true); err != nil {
+		log.Errorf("error while put(update) service to store: %s", err)
 		return err
 	}
 	return nil
