@@ -3,6 +3,7 @@ package core
 import (
 	"crypto/tls"
 	"errors"
+	"github.com/qk4l/gorb/local_store"
 	"net/url"
 	"path"
 	"strings"
@@ -19,6 +20,31 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// StoreSyncStatus info about synchronization with ext-store
+type StoreSyncStatus struct {
+	// RemovedServices list of services that can be removed
+	RemovedServices []string `json:"removed_services"`
+	// RemovedBackends list of backends that can be removed
+	RemovedBackends []string `json:"removed_backends"`
+	// NeedUpdateServices list of services that can be updated
+	NeedUpdateServices []string `json:"need_update_services"`
+	// NeedUpdateBackends list of backends that can be updated
+	NeedUpdateBackends []string `json:"need_update_backends"`
+	// Status show final info about sync. May be 'need sync', 'ok'
+	Status string `json:"status"`
+}
+
+func (sync *StoreSyncStatus) CheckStatus() string {
+	if sync.NeedUpdateBackends != nil ||
+		sync.NeedUpdateServices != nil ||
+		sync.RemovedBackends != nil ||
+		sync.RemovedServices != nil {
+		return "need sync"
+	} else {
+		return "ok"
+	}
+}
+
 type Store struct {
 	ctx              *Context
 	kvstore          store.Store
@@ -31,6 +57,9 @@ func NewStore(storeURLs []string, storeServicePath, storeBackendPath string, syn
 	var scheme string
 	var storePath string
 	var hosts []string
+	var kvstore store.Store
+	var err error
+
 	for _, storeURL := range storeURLs {
 		uri, err := url.Parse(storeURL)
 		if err != nil {
@@ -48,39 +77,33 @@ func NewStore(storeURLs []string, storeServicePath, storeBackendPath string, syn
 		hosts = append(hosts, uri.Host)
 	}
 
-	var backend store.Backend
+	var usedBackend store.Backend
 	switch scheme {
+	case "file":
+		usedBackend = "file"
 	case "consul":
-		backend = store.CONSUL
+		usedBackend = store.CONSUL
 	case "etcd":
-		backend = store.ETCD
+		usedBackend = store.ETCD
 	case "zookeeper":
-		backend = store.ZK
+		usedBackend = store.ZK
 	case "boltdb":
-		backend = store.BOLTDB
+		usedBackend = store.BOLTDB
 	case "mock":
-		backend = "mock"
+		usedBackend = "mock"
 	default:
 		return nil, errors.New("unsupported uri scheme : " + scheme)
 	}
-
-	storeConfig := &store.Config{
-		ConnectionTimeout: 10 * time.Second,
-	}
-
-	if useTLS {
-		storeConfig.TLS = &tls.Config{
-			InsecureSkipVerify: false,
+	if usedBackend == "file" {
+		kvstore, err = createLocalStore(storePath, storeServicePath, storeBackendPath)
+		if err != nil {
+			return nil, err
 		}
-	}
-
-	kvstore, err := libkv.NewStore(
-		backend,
-		hosts,
-		storeConfig,
-	)
-	if err != nil {
-		return nil, err
+	} else {
+		kvstore, err = createExtStore(usedBackend, hosts, useTLS)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	store := &Store{
@@ -112,6 +135,45 @@ func NewStore(storeURLs []string, storeServicePath, storeBackendPath string, syn
 	return store, nil
 }
 
+func createLocalStore(storePath string, storeServicePath string, storeBackendPath string) (store.Store, error) {
+	kvstore, err := local_store.NewLocalStore(storePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// init store dirs
+	if err = kvstore.CreateDir(path.Join(storePath, storeServicePath)); err != nil {
+		return nil, err
+	}
+	if err = kvstore.CreateDir(path.Join(storePath, storeBackendPath)); err != nil {
+		return nil, err
+	}
+
+	return kvstore, nil
+}
+
+func createExtStore(backend store.Backend, hosts []string, useTLS bool) (store.Store, error) {
+	storeConfig := &store.Config{
+		ConnectionTimeout: 10 * time.Second,
+	}
+
+	if useTLS {
+		storeConfig.TLS = &tls.Config{
+			InsecureSkipVerify: false,
+		}
+	}
+
+	kvstore, err := libkv.NewStore(
+		backend,
+		hosts,
+		storeConfig,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return kvstore, nil
+}
+
 func (s *Store) Sync() {
 	services, backends, err := s.getStoreContent()
 	if err != nil {
@@ -120,31 +182,6 @@ func (s *Store) Sync() {
 	}
 	// synchronize context
 	s.ctx.Synchronize(services, backends, false)
-}
-
-// StoreSyncStatus store info about synchronization with ext-store
-type StoreSyncStatus struct {
-	// RemovedServices list of services that can be removed
-	RemovedServices []string `json:"removed_services"`
-	// RemovedBackends list of backends that can be removed
-	RemovedBackends []string `json:"removed_backends"`
-	// NeedUpdateServices list of services that can be updated
-	NeedUpdateServices []string `json:"need_update_services"`
-	// NeedUpdateBackends list of backends that can be updated
-	NeedUpdateBackends []string `json:"need_update_backends"`
-	// Status show final info about sync. May be 'need sync', 'ok'
-	Status string `json:"status"`
-}
-
-func (sync *StoreSyncStatus) CheckStatus() string {
-	if sync.NeedUpdateBackends != nil ||
-		sync.NeedUpdateServices != nil ||
-		sync.RemovedBackends != nil ||
-		sync.RemovedServices != nil {
-		return "need sync"
-	} else {
-		return "ok"
-	}
 }
 
 func (s *Store) StoreSyncStatus() (*StoreSyncStatus, error) {

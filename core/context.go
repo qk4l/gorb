@@ -683,7 +683,7 @@ func (ctx *Context) CompareWithStore(storeServices map[string]*ServiceOptions, s
 	defer ctx.mutex.RUnlock()
 	syncStatus := &StoreSyncStatus{}
 
-	// find removed services from store
+	// find removed services in store
 	for id, _ := range ctx.services {
 		if _, ok := storeServices[id]; !ok {
 			log.Debugf("service [%s] not found in store", id)
@@ -691,7 +691,7 @@ func (ctx *Context) CompareWithStore(storeServices map[string]*ServiceOptions, s
 		}
 	}
 
-	// find removed backends from store
+	// find removed backends in store
 	for id, backend := range ctx.backends {
 		if _, ok := storeBackends[id]; !ok {
 			vsID := "(unknown)"
@@ -703,7 +703,7 @@ func (ctx *Context) CompareWithStore(storeServices map[string]*ServiceOptions, s
 		}
 	}
 
-	// find updated services from store
+	// find updated services in store
 	for id, storeServiceOptions := range storeServices {
 		if service, ok := ctx.services[id]; ok {
 			if service.options.CompareStoreOptions(storeServiceOptions) {
@@ -714,7 +714,7 @@ func (ctx *Context) CompareWithStore(storeServices map[string]*ServiceOptions, s
 		}
 	}
 
-	// find updated backends from store
+	// find updated backends in store
 	for id, storeBackendOptions := range storeBackends {
 		if backend, ok := ctx.backends[id]; ok {
 			if backend.options.CompareStoreOptions(storeBackendOptions) {
