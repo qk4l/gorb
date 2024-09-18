@@ -23,20 +23,26 @@ import (
 // StoreSyncStatus info about synchronization with ext-store
 type StoreSyncStatus struct {
 	// RemovedServices list of services that can be removed
-	RemovedServices []string `json:"removed_services"`
+	RemovedServices []string `json:"removed_services,omitempty"`
 	// RemovedBackends list of backends that can be removed
-	RemovedBackends []string `json:"removed_backends"`
-	// NeedUpdateServices list of services that can be updated
-	NeedUpdateServices []string `json:"need_update_services"`
-	// NeedUpdateBackends list of backends that can be updated
-	NeedUpdateBackends []string `json:"need_update_backends"`
+	RemovedBackends []string `json:"removed_backends,omitempty"`
+	// UpdatedServices list of services that can be updated
+	UpdatedServices []string `json:"updated_services,omitempty"`
+	// UpdatedBackends list of backends that can be updated
+	UpdatedBackends []string `json:"updated_backends,omitempty"`
+	// NewServices list of services that can be added
+	NewServices []string `json:"new_services,omitempty"`
+	// NewBackends list of backends that can be added
+	NewBackends []string `json:"new_backends,omitempty"`
 	// Status show final info about sync. May be 'need sync', 'ok'
 	Status string `json:"status"`
 }
 
 func (sync *StoreSyncStatus) CheckStatus() string {
-	if sync.NeedUpdateBackends != nil ||
-		sync.NeedUpdateServices != nil ||
+	if sync.NewServices != nil ||
+		sync.NewBackends != nil ||
+		sync.UpdatedBackends != nil ||
+		sync.UpdatedServices != nil ||
 		sync.RemovedBackends != nil ||
 		sync.RemovedServices != nil {
 		return "need sync"
@@ -181,7 +187,7 @@ func (s *Store) Sync() {
 		return
 	}
 	// synchronize context
-	s.ctx.Synchronize(services, backends, false)
+	s.ctx.Synchronize(services, backends)
 }
 
 func (s *Store) StoreSyncStatus() (*StoreSyncStatus, error) {
@@ -193,8 +199,8 @@ func (s *Store) StoreSyncStatus() (*StoreSyncStatus, error) {
 	return s.ctx.CompareWithStore(services, backends), nil
 }
 
-// UpdateStore update ext-kvstore
-func (s *Store) UpdateStore() error {
+// StartSyncWithStore synchronize gorb with store
+func (s *Store) StartSyncWithStore() error {
 	// build external services map
 	services, backends, err := s.getStoreContent()
 	if err != nil {
@@ -203,7 +209,7 @@ func (s *Store) UpdateStore() error {
 	}
 
 	// synchronize context
-	if err = s.ctx.Synchronize(services, backends, true); err != nil {
+	if err = s.ctx.Synchronize(services, backends); err != nil {
 		return err
 	}
 	return nil

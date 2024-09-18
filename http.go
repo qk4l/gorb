@@ -179,7 +179,7 @@ type storeUpdateHandler struct {
 
 func (h storeUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.store != nil {
-		if err := h.store.UpdateStore(); err != nil {
+		if err := h.store.StartSyncWithStore(); err != nil {
 			writeError(w, err)
 		} else {
 			writeJSON(w, map[string]string{"status": "ok"})

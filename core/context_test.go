@@ -112,7 +112,7 @@ func TestServiceIsCreated(t *testing.T) {
 	mockIpvs.On("AddService", "127.0.0.1", uint16(80), uint16(syscall.IPPROTO_TCP), "sh").Return(nil)
 	mockDisco.On("Expose", vsID, "127.0.0.1", uint16(80)).Return(nil)
 
-	err := c.createService(vsID, options, false)
+	err := c.createService(vsID, options)
 	assert.NoError(t, err)
 	mockIpvs.AssertExpectations(t)
 	mockDisco.AssertExpectations(t)
@@ -127,7 +127,7 @@ func TestServiceIsCreatedWithShFlags(t *testing.T) {
 	mockIpvs.On("AddServiceWithFlags", "127.0.0.1", uint16(80), uint16(syscall.IPPROTO_TCP), "sh", gnl2go.U32ToBinFlags(gnl2go.IP_VS_SVC_F_SCHED_SH_FALLBACK|gnl2go.IP_VS_SVC_F_SCHED_SH_PORT)).Return(nil)
 	mockDisco.On("Expose", vsID, "127.0.0.1", uint16(80)).Return(nil)
 
-	err := c.createService(vsID, options, false)
+	err := c.createService(vsID, options)
 	assert.NoError(t, err)
 	mockIpvs.AssertExpectations(t)
 	mockDisco.AssertExpectations(t)
@@ -255,7 +255,7 @@ func TestServiceIsCreatedWithGenericCustomFlags(t *testing.T) {
 		gnl2go.U32ToBinFlags(gnl2go.IP_VS_SVC_F_SCHED1|gnl2go.IP_VS_SVC_F_SCHED2|gnl2go.IP_VS_SVC_F_SCHED3)).Return(nil)
 	mockDisco.On("Expose", vsID, "127.0.0.1", uint16(80)).Return(nil)
 
-	err := c.createService(vsID, options, false)
+	err := c.createService(vsID, options)
 	assert.NoError(t, err)
 	mockIpvs.AssertExpectations(t)
 	mockDisco.AssertExpectations(t)
