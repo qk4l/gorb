@@ -605,6 +605,14 @@ func (ctx *Context) SetStore(store *Store) {
 	ctx.store = store
 }
 
+// StoreExist Checks if store set
+func (ctx *Context) StoreExist() bool {
+	if ctx.store == nil {
+		return false
+	}
+	return true
+}
+
 func (ctx *Context) CompareWithStore(storeServices map[string]*ServiceOptions, storeBackends map[string]*BackendOptions) *StoreSyncStatus {
 	ctx.mutex.RLock()
 	defer ctx.mutex.RUnlock()
