@@ -22,12 +22,18 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/qk4l/gorb/core"
 	"github.com/qk4l/gorb/util"
 
 	"github.com/gorilla/mux"
+)
+
+// possible api errors
+var (
+	operationNotSupportedStore = errors.New("operation not supported with store")
 )
 
 type errorResponse struct {
@@ -67,7 +73,10 @@ func (h serviceCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		opts core.ServiceOptions
 		vars = mux.Vars(r)
 	)
-
+	if h.ctx.StoreExist() {
+		writeError(w, operationNotSupportedStore)
+		return
+	}
 	if err := json.NewDecoder(r.Body).Decode(&opts); err != nil {
 		writeError(w, err)
 	} else if err := h.ctx.CreateService(vars["vsID"], &opts); err != nil {
@@ -84,6 +93,11 @@ func (h backendCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		opts core.BackendOptions
 		vars = mux.Vars(r)
 	)
+
+	if h.ctx.StoreExist() {
+		writeError(w, operationNotSupportedStore)
+		return
+	}
 
 	if err := json.NewDecoder(r.Body).Decode(&opts); err != nil {
 		writeError(w, err)
@@ -102,6 +116,11 @@ func (h backendUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		vars = mux.Vars(r)
 	)
 
+	if h.ctx.StoreExist() {
+		writeError(w, operationNotSupportedStore)
+		return
+	}
+
 	if err := json.NewDecoder(r.Body).Decode(&opts); err != nil {
 		writeError(w, err)
 	} else if _, err := h.ctx.UpdateBackend(vars["vsID"], vars["rsID"], opts.Weight); err != nil {
@@ -116,6 +135,11 @@ type serviceRemoveHandler struct {
 func (h serviceRemoveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
+	if h.ctx.StoreExist() {
+		writeError(w, operationNotSupportedStore)
+		return
+	}
+
 	if _, err := h.ctx.RemoveService(vars["vsID"]); err != nil {
 		writeError(w, err)
 	}
@@ -127,6 +151,11 @@ type backendRemoveHandler struct {
 
 func (h backendRemoveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+
+	if h.ctx.StoreExist() {
+		writeError(w, operationNotSupportedStore)
+		return
+	}
 
 	if _, err := h.ctx.RemoveBackend(vars["vsID"], vars["rsID"]); err != nil {
 		writeError(w, err)
@@ -173,13 +202,13 @@ func (h backendStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-type storeUpdateHandler struct {
+type storeSyncHandler struct {
 	store *core.Store
 }
 
-func (h storeUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h storeSyncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.store != nil {
-		if err := h.store.UpdateStore(); err != nil {
+		if err := h.store.StartSyncWithStore(); err != nil {
 			writeError(w, err)
 		} else {
 			writeJSON(w, map[string]string{"status": "ok"})
