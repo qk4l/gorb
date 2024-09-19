@@ -51,13 +51,19 @@ type ContextOptions struct {
 
 // ServiceOptions describe a virtual service.
 type ServiceOptions struct {
-	Host       string `json:"host"`
-	Port       uint16 `json:"port"`
-	Protocol   string `json:"protocol"`
-	Method     string `json:"method"`
-	Flags      string `json:"flags"`
-	Persistent bool   `json:"persistent"`
-	Fallback   string `json:"fallback"`
+	//service settings
+	Host       string `json:"host" yaml:"host"`
+	Port       uint16 `json:"port" yaml:"port"`
+	Protocol   string `json:"protocol" yaml:"protocol"`
+	LbMethod   string `json:"lb_method" yaml:"lb_method"`
+	ShFlags    string `json:"sh_flags" yaml:"sh_flags"`
+	Persistent bool   `json:"persistent" yaml:"persistent"`
+	Fallback   string `json:"fallback" yaml:"fallback"`
+
+	// service backends settings
+	FwdMethod string         `json:"fwd_method" yaml:"fwd_method"`
+	Pulse     *pulse.Options `json:"pulse" yaml:"pulse"`
+	MaxWeight uint32         `json:"max_weight" yaml:"max_weight"`
 
 	// Host string resolved to an IP, including DNS lookup.
 	host      net.IP
@@ -65,6 +71,9 @@ type ServiceOptions struct {
 
 	// Protocol string converted to a protocol number.
 	protocol uint16
+
+	// Forwarding method string converted to a forwarding method number.
+	methodID uint32
 }
 
 // Validate fills missing fields and validates virtual service configuration.
@@ -100,8 +109,8 @@ func (o *ServiceOptions) Validate(defaultHost net.IP) error {
 		return ErrUnknownProtocol
 	}
 
-	if o.Flags != "" {
-		for _, flag := range strings.Split(o.Flags, "|") {
+	if o.ShFlags != "" {
+		for _, flag := range strings.Split(o.ShFlags, "|") {
 			if _, ok := schedulerFlags[flag]; !ok {
 				return ErrUnknownFlag
 			}
@@ -118,78 +127,22 @@ func (o *ServiceOptions) Validate(defaultHost net.IP) error {
 		o.Fallback = "fb-default"
 	}
 
-	if len(o.Method) == 0 {
+	if len(o.LbMethod) == 0 {
 		// WRR since Pulse will dynamically reweight backends.
-		o.Method = "wrr"
+		o.LbMethod = "wrr"
 	}
 
-	return nil
-}
-
-func (o *ServiceOptions) CompareStoreOptions(options *ServiceOptions) bool {
-	if o.Host != options.Host {
-		return false
-	}
-	if o.Port != options.Port {
-		return false
-	}
-	if o.Protocol != options.Protocol {
-		return false
-	}
-	if o.Flags != options.Flags {
-		return false
-	}
-	if o.Method != options.Method {
-		return false
-	}
-	if o.Persistent != options.Persistent {
-		return false
-	}
-	if o.Fallback != options.Fallback {
-		return false
-	}
-	return true
-}
-
-// BackendOptions describe a virtual service backend.
-type BackendOptions struct {
-	Host   string         `json:"host"`
-	Port   uint16         `json:"port"`
-	Weight int32          `json:"weight"`
-	Method string         `json:"method"`
-	Pulse  *pulse.Options `json:"pulse"`
-	VsID   string         `json:"vsid,omitempty"`
-
-	// Host string resolved to an IP, including DNS lookup.
-	host net.IP
-
-	// Forwarding method string converted to a forwarding method number.
-	methodID uint32
-}
-
-// Validate fills missing fields and validates backend configuration.
-func (o *BackendOptions) Validate() error {
-	if len(o.Host) == 0 || o.Port == 0 {
-		return ErrMissingEndpoint
+	if o.MaxWeight == 0 {
+		o.MaxWeight = 100
 	}
 
-	if addr, err := net.ResolveIPAddr("ip", o.Host); err == nil {
-		o.host = addr.IP
-	} else {
-		return err
+	if len(o.FwdMethod) == 0 {
+		o.FwdMethod = "nat"
 	}
 
-	if o.Weight <= 0 {
-		o.Weight = 100
-	}
+	o.FwdMethod = strings.ToLower(o.FwdMethod)
 
-	if len(o.Method) == 0 {
-		o.Method = "nat"
-	}
-
-	o.Method = strings.ToLower(o.Method)
-
-	switch o.Method {
+	switch o.FwdMethod {
 	case "dr":
 		o.methodID = gnl2go.IPVS_DIRECTROUTE
 	case "nat":
@@ -208,14 +161,77 @@ func (o *BackendOptions) Validate() error {
 	return nil
 }
 
-func (o *BackendOptions) CompareStoreOptions(options *BackendOptions) bool {
+func (o *ServiceOptions) CompareStoreOptions(options *ServiceOptions) bool {
 	if o.Host != options.Host {
 		return false
 	}
 	if o.Port != options.Port {
 		return false
 	}
-	if o.Method != options.Method {
+	if o.Protocol != options.Protocol {
+		return false
+	}
+	if o.ShFlags != options.ShFlags {
+		return false
+	}
+	if o.LbMethod != options.LbMethod {
+		return false
+	}
+	if o.Persistent != options.Persistent {
+		return false
+	}
+	if o.Fallback != options.Fallback {
+		return false
+	}
+	if o.FwdMethod != options.FwdMethod {
+		return false
+	}
+	if o.Pulse != options.Pulse {
+		return false
+	}
+	if o.MaxWeight != options.MaxWeight {
+		return false
+	}
+	return true
+}
+
+// BackendOptions describe a virtual service backend.
+type BackendOptions struct {
+	Host string `json:"host" yaml:"host"`
+	Port uint16 `json:"port" yaml:"port"`
+
+	// vsID of backend
+	vsID string
+	// Host string resolved to an IP, including DNS lookup.
+	host net.IP
+	// Backend current weight
+	weight uint32
+	// Forwarding method string converted to a forwarding method number.
+	methodID uint32
+	// pulse settings
+	pulse *pulse.Options
+}
+
+// Validate fills missing fields and validates backend configuration.
+func (o *BackendOptions) Validate() error {
+	if len(o.Host) == 0 || o.Port == 0 {
+		return ErrMissingEndpoint
+	}
+
+	if addr, err := net.ResolveIPAddr("ip", o.Host); err == nil {
+		o.host = addr.IP
+	} else {
+		return err
+	}
+
+	return nil
+}
+
+func (o *BackendOptions) CompareStoreOptions(options *BackendOptions) bool {
+	if o.Host != options.Host {
+		return false
+	}
+	if o.Port != options.Port {
 		return false
 	}
 	return true
