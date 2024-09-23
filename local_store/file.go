@@ -6,17 +6,16 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"path"
-	"sync"
 )
 
 // Possible local store errors
 var (
 	emptyRootPath = errors.New("empty root path")
+	notAllowed    = errors.New("method is not allowed")
 )
 
 type LocalStore struct {
 	rootPath string
-	mutex    sync.RWMutex
 }
 
 func NewLocalStore(rootPath string) (*LocalStore, error) {
@@ -54,29 +53,11 @@ func (local *LocalStore) CreateDir(dirPath string) error {
 
 // Put a value at the specified key
 func (local *LocalStore) Put(key string, value []byte, options *store.WriteOptions) error {
-	local.mutex.Lock()
-	defer local.mutex.Unlock()
-	return local.put(key, value, options)
-}
-
-func (local *LocalStore) put(key string, value []byte, options *store.WriteOptions) error {
-	if err := local.ensureDirExist(path.Dir(key)); err != nil {
-		return err
-	}
-
-	f, err := os.OpenFile(key, os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	_, err = f.Write(value)
-	return nil
+	return notAllowed
 }
 
 // Get a value given its key
 func (local *LocalStore) Get(key string) (*store.KVPair, error) {
-	local.mutex.RLock()
-	defer local.mutex.RUnlock()
 	return local.get(key)
 }
 
@@ -95,19 +76,11 @@ func (local *LocalStore) get(key string) (*store.KVPair, error) {
 
 // Delete the value at the specified key
 func (local *LocalStore) Delete(key string) error {
-	local.mutex.Lock()
-	defer local.mutex.Unlock()
-	return local.delete(key)
-}
-
-func (local *LocalStore) delete(key string) error {
-	return os.Remove(key)
+	return notAllowed
 }
 
 // Verify if a Key exists in the store
 func (local *LocalStore) Exists(key string) (bool, error) {
-	local.mutex.RLock()
-	defer local.mutex.RUnlock()
 	return local.exists(key)
 }
 
@@ -142,8 +115,6 @@ func (local *LocalStore) NewLock(key string, options *store.LockOptions) (store.
 
 // List the content of a given prefix
 func (local *LocalStore) List(directory string) ([]*store.KVPair, error) {
-	local.mutex.RLock()
-	defer local.mutex.RUnlock()
 	return local.list(directory)
 }
 
@@ -168,13 +139,7 @@ func (local *LocalStore) list(directory string) ([]*store.KVPair, error) {
 
 // DeleteTree deletes a range of keys under a given directory
 func (local *LocalStore) DeleteTree(directory string) error {
-	local.mutex.Lock()
-	defer local.mutex.Unlock()
-	return local.deleteTree(directory)
-}
-
-func (local *LocalStore) deleteTree(directory string) error {
-	return os.RemoveAll(directory)
+	return notAllowed
 }
 
 // Atomic CAS operation on a single value.
