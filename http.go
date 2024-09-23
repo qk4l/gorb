@@ -70,16 +70,16 @@ type serviceCreateHandler struct {
 
 func (h serviceCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var (
-		opts core.ServiceOptions
-		vars = mux.Vars(r)
+		serviceConfig core.ServiceConfig
+		vars          = mux.Vars(r)
 	)
 	if h.ctx.StoreExist() {
 		writeError(w, operationNotSupportedStore)
 		return
 	}
-	if err := json.NewDecoder(r.Body).Decode(&opts); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&serviceConfig); err != nil {
 		writeError(w, err)
-	} else if err := h.ctx.CreateService(vars["vsID"], &opts); err != nil {
+	} else if err := h.ctx.CreateService(vars["vsID"], &serviceConfig); err != nil {
 		writeError(w, err)
 	}
 }
@@ -102,28 +102,6 @@ func (h backendCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if err := json.NewDecoder(r.Body).Decode(&opts); err != nil {
 		writeError(w, err)
 	} else if err := h.ctx.CreateBackend(vars["vsID"], vars["rsID"], &opts); err != nil {
-		writeError(w, err)
-	}
-}
-
-type backendUpdateHandler struct {
-	ctx *core.Context
-}
-
-func (h backendUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var (
-		opts core.BackendOptions
-		vars = mux.Vars(r)
-	)
-
-	if h.ctx.StoreExist() {
-		writeError(w, operationNotSupportedStore)
-		return
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&opts); err != nil {
-		writeError(w, err)
-	} else if _, err := h.ctx.UpdateBackend(vars["vsID"], vars["rsID"], opts.Weight); err != nil {
 		writeError(w, err)
 	}
 }
