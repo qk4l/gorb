@@ -63,7 +63,7 @@ type ServiceOptions struct {
 	// service backends settings
 	FwdMethod string         `json:"fwd_method" yaml:"fwd_method"`
 	Pulse     *pulse.Options `json:"pulse" yaml:"pulse"`
-	MaxWeight uint32         `json:"max_weight" yaml:"max_weight"`
+	MaxWeight int32          `json:"max_weight" yaml:"max_weight"`
 
 	// Host string resolved to an IP, including DNS lookup.
 	host      net.IP
@@ -132,7 +132,7 @@ func (o *ServiceOptions) Validate(defaultHost net.IP) error {
 		o.LbMethod = "wrr"
 	}
 
-	if o.MaxWeight == 0 {
+	if o.MaxWeight <= 0 {
 		o.MaxWeight = 100
 	}
 
@@ -186,9 +186,6 @@ func (o *ServiceOptions) CompareStoreOptions(options *ServiceOptions) bool {
 	if o.FwdMethod != options.FwdMethod {
 		return false
 	}
-	if o.Pulse != options.Pulse {
-		return false
-	}
 	if o.MaxWeight != options.MaxWeight {
 		return false
 	}
@@ -205,9 +202,7 @@ type BackendOptions struct {
 	// Host string resolved to an IP, including DNS lookup.
 	host net.IP
 	// Backend current weight
-	weight uint32
-	// Forwarding method string converted to a forwarding method number.
-	methodID uint32
+	weight int32
 	// pulse settings
 	pulse *pulse.Options
 }
