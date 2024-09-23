@@ -121,7 +121,6 @@ func main() {
 
 	r.Handle("/service/{vsID}", serviceCreateHandler{ctx}).Methods("PUT")
 	r.Handle("/service/{vsID}/{rsID}", backendCreateHandler{ctx}).Methods("PUT")
-	r.Handle("/service/{vsID}/{rsID}", backendUpdateHandler{ctx}).Methods("PATCH")
 	r.Handle("/service/{vsID}", serviceRemoveHandler{ctx}).Methods("DELETE")
 	r.Handle("/service/{vsID}/{rsID}", backendRemoveHandler{ctx}).Methods("DELETE")
 	r.Handle("/service", serviceListHandler{ctx}).Methods("GET")
