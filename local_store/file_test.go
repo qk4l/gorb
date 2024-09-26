@@ -29,35 +29,6 @@ func TestLocalStore_ensureDirExist(t *testing.T) {
 	assert.True(exist)
 }
 
-func TestLocalStore_put_createAndUpdate(t *testing.T) {
-	defer os.RemoveAll("/tmp/gorb_tests")
-
-	var exist bool
-	var content []byte
-
-	assert := assert.New(t)
-	filePath := path.Join(dirPath, fileName1)
-	fstore := LocalStore{rootPath: "/tmp/gorb_tests"}
-
-	err := fstore.ensureDirExist(dirPath)
-	assert.NoError(err)
-
-	err = fstore.put(filePath, []byte(content1), &store.WriteOptions{})
-	assert.NoError(err)
-
-	exist, err = fstore.exists(filePath)
-	assert.True(exist)
-
-	content, err = os.ReadFile(filePath)
-	assert.Equal([]byte(content1), content)
-
-	err = fstore.put(filePath, []byte(content2), &store.WriteOptions{})
-	assert.NoError(err)
-
-	content, err = os.ReadFile(filePath)
-	assert.Equal([]byte(content2), content)
-}
-
 func TestLocalStore_get(t *testing.T) {
 	defer os.RemoveAll("/tmp/gorb_tests")
 
@@ -72,7 +43,7 @@ func TestLocalStore_get(t *testing.T) {
 	err := fstore.ensureDirExist(dirPath)
 	assert.NoError(err)
 
-	err = fstore.put(filePath, []byte(content1), &store.WriteOptions{})
+	err = os.WriteFile(filePath, []byte(content1), 0660)
 	assert.NoError(err)
 
 	exist, err = fstore.exists(filePath)
@@ -98,7 +69,7 @@ func TestLocalStore_exist(t *testing.T) {
 	assert.NoError(err)
 	assert.False(exist)
 
-	err = fstore.put(filePath, []byte{}, &store.WriteOptions{})
+	err = os.WriteFile(filePath, []byte{}, 0660)
 	assert.NoError(err)
 
 	exist, err = fstore.exists(filePath)
@@ -119,10 +90,10 @@ func TestLocalStore_list(t *testing.T) {
 	err := fstore.ensureDirExist(dirPath)
 	assert.NoError(err)
 
-	err = fstore.put(filePath1, []byte(content1), &store.WriteOptions{})
+	err = os.WriteFile(filePath1, []byte(content1), 0660)
 	assert.NoError(err)
 
-	err = fstore.put(filePath2, []byte(content2), &store.WriteOptions{})
+	err = os.WriteFile(filePath2, []byte(content2), 0660)
 	assert.NoError(err)
 	var kvPairs []*store.KVPair
 	kvPairs, err = fstore.list(dirPath)

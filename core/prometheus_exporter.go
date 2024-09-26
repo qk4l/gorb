@@ -126,7 +126,7 @@ func (e *Exporter) collect() error {
 
 			serviceBackendWeight.WithLabelValues(serviceName, backendName, backend.Options.Host,
 				fmt.Sprintf("%d", backend.Options.Port)).
-				Set(float64(backend.Options.Weight))
+				Set(float64(backend.Options.weight))
 		}
 	}
 	return nil

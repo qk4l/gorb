@@ -6,25 +6,30 @@ import (
 	"github.com/qk4l/gorb/pulse"
 )
 
-func TestCollector(t *testing.T) {
-	ctx := &Context{
-		services: make(map[string]*service),
-		backends: make(map[string]*backend),
-	}
-	ctx.services["service1"] = &service{options: &ServiceOptions{
+var (
+	service = &Service{options: &ServiceOptions{
 		Host:       "localhost",
 		Port:       1234,
 		Protocol:   "tcp",
-		Method:     "wlc",
+		LbMethod:   "wlc",
 		Persistent: true,
 	}}
-	ctx.backends["service1-backend1"] = &backend{options: &BackendOptions{
-		Host:   "localhost",
-		Port:   1234,
-		Weight: 1,
-		Method: "nat",
-		VsID:   "service1",
-	}, service: ctx.services["service1"], monitor: &pulse.Pulse{}}
+	backend = &Backend{
+		options: &BackendOptions{
+			Host:   "localhost",
+			Port:   1234,
+			weight: 1,
+			vsID:   "service1",
+		},
+		monitor: &pulse.Pulse{}}
+)
+
+func TestCollector(t *testing.T) {
+	service.backends = map[string]*Backend{"service1-backend1": backend}
+	ctx := &Context{
+		services: map[string]*Service{"service1": service},
+	}
+
 	exporter := NewExporter(ctx)
 	err := exporter.collect()
 	if err != nil {

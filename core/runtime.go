@@ -43,7 +43,18 @@ func (ctx *Context) processPulseUpdate(stash map[pulse.ID]int32, u pulse.Update)
 	vsID, rsID := u.Source.VsID, u.Source.RsID
 	ctx.mutex.Lock()
 	// check exist
-	if _, ok := ctx.backends[rsID]; !ok || u.Metrics.Status == pulse.StatusRemoved {
+	vs, ok := ctx.services[vsID]
+	if !ok {
+		if _, exists := stash[u.Source]; exists {
+			log.Debugf("service %s has been deleted, so deleting it from stash too", u.Source)
+			delete(stash, u.Source)
+		}
+		ctx.mutex.Unlock()
+		return
+	}
+	rs, ok := vs.backends[rsID]
+
+	if !ok || u.Metrics.Status == pulse.StatusRemoved {
 		if _, exists := stash[u.Source]; exists {
 			log.Debugf("backend %s has been deleted, so deleting it from stash too", u.Source)
 			delete(stash, u.Source)
@@ -52,11 +63,11 @@ func (ctx *Context) processPulseUpdate(stash map[pulse.ID]int32, u pulse.Update)
 		return
 	}
 
-	if ctx.backends[rsID].metrics.Status != u.Metrics.Status {
+	if rs.metrics.Status != u.Metrics.Status {
 		log.Warnf("backend %s status: %s", u.Source, u.Metrics.Status)
 	}
 	// This is a copy of metrics structure from Pulse.
-	ctx.backends[rsID].metrics = u.Metrics
+	rs.metrics = u.Metrics
 
 	ctx.mutex.Unlock()
 
