@@ -127,7 +127,7 @@ func main() {
 	r.Handle("/service", serviceListHandler{ctx}).Methods("GET")
 	r.Handle("/service/{vsID}", serviceStatusHandler{ctx}).Methods("GET")
 	r.Handle("/service/{vsID}/{rsID}", backendStatusHandler{ctx}).Methods("GET")
-	r.Handle("/store/sync", storeUpdateHandler{store}).Methods("GET")
+	r.Handle("/store/sync", storeSyncHandler{store}).Methods("GET")
 	r.Handle("/store/sync/status", storeSyncStatusHandler{store}).Methods("GET")
 	r.Handle("/metrics", promhttp.Handler()).Methods("GET")
 

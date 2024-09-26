@@ -208,7 +208,7 @@ func (ctx *Context) GetPoolForService(svc gnl2go.Service) (gnl2go.Pool, error) {
 }
 
 // CreateService registers a new virtual service with IPVS.
-func (ctx *Context) createService(vsID string, opts *ServiceOptions, updateExtStore bool) error {
+func (ctx *Context) createService(vsID string, opts *ServiceOptions) error {
 	if err := opts.Validate(ctx.endpoint); err != nil {
 		return err
 	}
@@ -233,13 +233,6 @@ func (ctx *Context) createService(vsID string, opts *ServiceOptions, updateExtSt
 
 	log.Infof("creating virtual service [%s] on %s:%d", vsID, opts.host,
 		opts.Port)
-
-	// create service to external store
-	if ctx.store != nil && updateExtStore {
-		if err := ctx.store.UpdateService(vsID, opts); err != nil {
-			return err
-		}
-	}
 
 	var svc = gnl2go.Service{
 		Proto: opts.protocol,
@@ -298,11 +291,11 @@ func (ctx *Context) createService(vsID string, opts *ServiceOptions, updateExtSt
 func (ctx *Context) CreateService(vsID string, opts *ServiceOptions) error {
 	ctx.mutex.Lock()
 	defer ctx.mutex.Unlock()
-	return ctx.createService(vsID, opts, true)
+	return ctx.createService(vsID, opts)
 }
 
 // CreateBackend registers a new backend with a virtual service.
-func (ctx *Context) createBackend(vsID, rsID string, opts *BackendOptions, updateExtStore bool) error {
+func (ctx *Context) createBackend(vsID, rsID string, opts *BackendOptions) error {
 	if err := opts.Validate(); err != nil {
 		return err
 	}
@@ -353,13 +346,6 @@ func (ctx *Context) createBackend(vsID, rsID string, opts *BackendOptions, updat
 	}
 
 	if skipCreation == false {
-		// create backend to external store
-		if ctx.store != nil && updateExtStore {
-			if err := ctx.updateBackendExtStore(vsID, rsID, opts); err != nil {
-				return err
-			}
-		}
-
 		if err := ctx.ipvs.AddDestPort(
 			vs.options.host.String(),
 			vs.options.Port,
@@ -386,7 +372,7 @@ func (ctx *Context) createBackend(vsID, rsID string, opts *BackendOptions, updat
 func (ctx *Context) CreateBackend(vsID, rsID string, opts *BackendOptions) error {
 	ctx.mutex.Lock()
 	defer ctx.mutex.Unlock()
-	return ctx.createBackend(vsID, rsID, opts, true)
+	return ctx.createBackend(vsID, rsID, opts)
 }
 
 // UpdateBackend updates the specified backend's weight.
@@ -437,28 +423,8 @@ func (ctx *Context) UpdateBackend(vsID, rsID string, weight int32) (int32, error
 	return ctx.updateBackend(vsID, rsID, weight)
 }
 
-// removeServiceExtStore remove service from external store
-func (ctx *Context) removeServiceExtStore(vsID string) error {
-	log.Infof("removing service [%s] from ext-store ", vsID)
-	if err := ctx.store.RemoveService(vsID); err != nil {
-		log.Errorf("error while remove service [%s] from ext-store: %s", vsID, err)
-		return err
-	}
-	return nil
-}
-
-// updateServiceExtStore update a service on external store
-func (ctx *Context) updateServiceExtStore(vsID string, opts *ServiceOptions) error {
-	log.Infof("updating service [%s] on ext-store ", vsID)
-	if err := ctx.store.UpdateService(vsID, opts); err != nil {
-		log.Errorf("error while updating service [%s] from ext-store: %s", vsID, err)
-		return err
-	}
-	return nil
-}
-
 // RemoveService deregisters a virtual service.
-func (ctx *Context) removeService(vsID string, cleanupExtStore bool) (*ServiceOptions, error) {
+func (ctx *Context) removeService(vsID string) (*ServiceOptions, error) {
 	vs, exists := ctx.services[vsID]
 
 	if !exists {
@@ -492,13 +458,6 @@ func (ctx *Context) removeService(vsID string, cleanupExtStore bool) (*ServiceOp
 		return nil, ErrIpvsSyscallFailed
 	}
 
-	// delete service from external store
-	if ctx.store != nil && cleanupExtStore {
-		if err := ctx.store.RemoveService(vsID); err != nil {
-			log.Errorf("error while remove service : %s", err)
-		}
-	}
-
 	for rsID, backend := range ctx.backends {
 		if backend.service != vs {
 			continue
@@ -510,11 +469,6 @@ func (ctx *Context) removeService(vsID string, cleanupExtStore bool) (*ServiceOp
 		backend.monitor.Stop()
 
 		delete(ctx.backends, rsID)
-
-		// delete backend from external store
-		if ctx.store != nil && cleanupExtStore {
-			ctx.removeBackendExtStore(vsID, rsID)
-		}
 	}
 
 	// TODO(@kobolog): This will never happen in case of gorb-link.
@@ -529,31 +483,11 @@ func (ctx *Context) removeService(vsID string, cleanupExtStore bool) (*ServiceOp
 func (ctx *Context) RemoveService(vsID string) (*ServiceOptions, error) {
 	ctx.mutex.Lock()
 	defer ctx.mutex.Unlock()
-	return ctx.removeService(vsID, true)
-}
-
-// removeBackendExtStore remove backend from external store
-func (ctx *Context) removeBackendExtStore(vsID, rsID string) error {
-	log.Infof("removing backend [%s/%s] from ext-store ", vsID, rsID)
-	if err := ctx.store.RemoveBackend(rsID); err != nil {
-		log.Errorf("error while remove backend [%s/%s] from external store : %s", vsID, rsID, err)
-		return err
-	}
-	return nil
-}
-
-// updateBackendExtStore update a backend on external store
-func (ctx *Context) updateBackendExtStore(vsID, rsID string, opts *BackendOptions) error {
-	log.Infof("updating backend [%s/%s] on ext-store ", vsID, rsID)
-	if err := ctx.store.UpdateBackend(vsID, rsID, opts); err != nil {
-		log.Errorf("error while updating backend [%s/%s] from ext-store: %s", vsID, rsID, err)
-		return err
-	}
-	return nil
+	return ctx.removeService(vsID)
 }
 
 // RemoveBackend deregisters a backend.
-func (ctx *Context) removeBackend(vsID, rsID string, cleanupExtStore bool) (*BackendOptions, error) {
+func (ctx *Context) removeBackend(vsID, rsID string) (*BackendOptions, error) {
 	rs, existsRs := ctx.backends[rsID]
 	vs, existsVs := ctx.services[vsID]
 
@@ -562,13 +496,6 @@ func (ctx *Context) removeBackend(vsID, rsID string, cleanupExtStore bool) (*Bac
 	}
 
 	log.Infof("removing backend [%s/%s]", vsID, rsID)
-
-	// delete backend from external store
-	if ctx.store != nil && cleanupExtStore {
-		if err := ctx.removeBackendExtStore(vsID, rsID); err != nil {
-			return nil, err
-		}
-	}
 
 	// Stop the pulse goroutine.
 	rs.monitor.Stop()
@@ -593,7 +520,7 @@ func (ctx *Context) removeBackend(vsID, rsID string, cleanupExtStore bool) (*Bac
 func (ctx *Context) RemoveBackend(vsID, rsID string) (*BackendOptions, error) {
 	ctx.mutex.Lock()
 	defer ctx.mutex.Unlock()
-	return ctx.removeBackend(vsID, rsID, true)
+	return ctx.removeBackend(vsID, rsID)
 }
 
 // ListServices returns a list of all registered services.
@@ -678,57 +605,70 @@ func (ctx *Context) SetStore(store *Store) {
 	ctx.store = store
 }
 
+// StoreExist Checks if store set
+func (ctx *Context) StoreExist() bool {
+	if ctx.store == nil {
+		return false
+	}
+	return true
+}
+
 func (ctx *Context) CompareWithStore(storeServices map[string]*ServiceOptions, storeBackends map[string]*BackendOptions) *StoreSyncStatus {
 	ctx.mutex.RLock()
 	defer ctx.mutex.RUnlock()
 	syncStatus := &StoreSyncStatus{}
 
-	// find removed services from store
-	for id, _ := range ctx.services {
-		if _, ok := storeServices[id]; !ok {
+	// find removed services in store
+	for id, service := range ctx.services {
+		if storeServiceOptions, ok := storeServices[id]; !ok {
 			log.Debugf("service [%s] not found in store", id)
 			syncStatus.RemovedServices = append(syncStatus.RemovedServices, id)
+		} else {
+			// find updated services in store
+			if !service.options.CompareStoreOptions(storeServiceOptions) {
+				log.Debugf("service [%s] is outdated.", id)
+				syncStatus.UpdatedServices = append(syncStatus.UpdatedServices, id)
+			}
+			delete(storeServices, id)
 		}
 	}
+	// find new services
+	for id, _ := range storeServices {
+		log.Debugf("new service [%s] found.", id)
+		syncStatus.NewServices = append(syncStatus.NewServices, id)
+	}
 
-	// find removed backends from store
+	// find removed backends in store
 	for id, backend := range ctx.backends {
-		if _, ok := storeBackends[id]; !ok {
+		if storeBackendOptions, ok := storeBackends[id]; !ok {
 			vsID := "(unknown)"
 			if len(backend.options.VsID) > 0 {
 				vsID = backend.options.VsID
 			}
 			log.Debugf("backend [%s/%s] not found in store", vsID, id)
 			syncStatus.RemovedBackends = append(syncStatus.RemovedBackends, id)
+		} else {
+			// find updated backends in store
+			if !backend.options.CompareStoreOptions(storeBackendOptions) {
+				log.Debugf("backend [%s] is outdated.", id)
+				syncStatus.UpdatedBackends = append(syncStatus.UpdatedBackends, id)
+
+			}
+			delete(storeBackends, id)
 		}
 	}
 
-	// find updated services from store
-	for id, storeServiceOptions := range storeServices {
-		if service, ok := ctx.services[id]; ok {
-			if service.options.CompareStoreOptions(storeServiceOptions) {
-				continue
-			}
-			log.Debugf("service [%s] is outdated.", id)
-			syncStatus.NeedUpdateServices = append(syncStatus.NeedUpdateServices, id)
-		}
+	for id, storeBackend := range storeBackends {
+		backendName := fmt.Sprintf("[%s/%s]", storeBackend.VsID, id)
+		log.Debugf("new backend %s found.", backendName)
+		syncStatus.NewBackends = append(syncStatus.NewBackends, backendName)
 	}
 
-	// find updated backends from store
-	for id, storeBackendOptions := range storeBackends {
-		if backend, ok := ctx.backends[id]; ok {
-			if backend.options.CompareStoreOptions(storeBackendOptions) {
-				continue
-			}
-			log.Debugf("backend [%s] is outdated.", id)
-			syncStatus.NeedUpdateBackends = append(syncStatus.NeedUpdateBackends, id)
-		}
-	}
 	syncStatus.Status = syncStatus.CheckStatus()
 	return syncStatus
 }
 
-func (ctx *Context) Synchronize(storeServices map[string]*ServiceOptions, storeBackends map[string]*BackendOptions, updateExtStore bool) error {
+func (ctx *Context) Synchronize(storeServices map[string]*ServiceOptions, storeBackends map[string]*BackendOptions) error {
 	ctx.mutex.Lock()
 	defer ctx.mutex.Unlock()
 	defer log.Info("============================ END SYNC ============================")
@@ -747,7 +687,7 @@ func (ctx *Context) Synchronize(storeServices map[string]*ServiceOptions, storeB
 	for id, _ := range ctx.services {
 		if _, ok := storeServices[id]; !ok {
 			log.Debugf("service [%s] not found. removing", id)
-			if _, err := ctx.removeService(id, false); err != nil {
+			if _, err := ctx.removeService(id); err != nil {
 				return err
 			}
 		}
@@ -760,11 +700,11 @@ func (ctx *Context) Synchronize(storeServices map[string]*ServiceOptions, storeB
 			}
 			log.Debugf("service [%s] is outdated. updating", id)
 
-			if _, err := ctx.removeService(id, false); err != nil {
+			if _, err := ctx.removeService(id); err != nil {
 				return err
 			}
 		}
-		if err := ctx.createService(id, storeServiceOptions, updateExtStore); err != nil {
+		if err := ctx.createService(id, storeServiceOptions); err != nil {
 			return err
 		}
 	}
@@ -778,7 +718,7 @@ func (ctx *Context) Synchronize(storeServices map[string]*ServiceOptions, storeB
 				vsID = backend.options.VsID
 			}
 			log.Debugf("backend [%s/%s] not found. removing", vsID, id)
-			if _, err := ctx.removeBackend(vsID, id, false); err != nil {
+			if _, err := ctx.removeBackend(vsID, id); err != nil {
 				return err
 			}
 		}
@@ -791,11 +731,11 @@ func (ctx *Context) Synchronize(storeServices map[string]*ServiceOptions, storeB
 				continue
 			}
 			log.Debugf("backend [%s/%s] outdated. updating", storeBackendOptions.VsID, id)
-			if _, err := ctx.removeBackend(storeBackendOptions.VsID, id, false); err != nil {
+			if _, err := ctx.removeBackend(storeBackendOptions.VsID, id); err != nil {
 				return err
 			}
 		}
-		if err := ctx.createBackend(storeBackendOptions.VsID, id, storeBackendOptions, updateExtStore); err != nil {
+		if err := ctx.createBackend(storeBackendOptions.VsID, id, storeBackendOptions); err != nil {
 			log.Errorf("create backend error: %s", err.Error())
 			return err
 		}
