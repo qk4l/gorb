@@ -195,6 +195,11 @@ func (ctx *Context) GetPoolForService(svc gnl2go.Service) (gnl2go.Pool, error) {
 // CreateService registers a new virtual service with IPVS.
 func (ctx *Context) createService(vsID string, serviceConfig *ServiceConfig) error {
 	serviceOptions := serviceConfig.ServiceOptions
+
+	if serviceOptions.CommonName == "" {
+		serviceOptions.CommonName = vsID
+	}
+
 	if err := serviceOptions.Validate(ctx.endpoint); err != nil {
 		return err
 	}

@@ -17,37 +17,37 @@ var (
 		Namespace: namespace,
 		Name:      "service_health",
 		Help:      "Health of the load balancer service",
-	}, []string{"service_name", "service_host", "service_port", "protocol"})
+	}, []string{"service_name", "service_host", "service_port", "protocol", "common_name"})
 
 	serviceBackends = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "service_backends",
 		Help:      "Number of backends in the load balancer service",
-	}, []string{"service_name", "service_host", "service_port", "protocol"})
+	}, []string{"service_name", "service_host", "service_port", "protocol", "common_name"})
 
 	serviceBackendUptimeTotal = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "service_backend_uptime_seconds",
 		Help:      "Uptime in seconds of a backend service",
-	}, []string{"service_name", "backend_name", "backend_host", "backend_port"})
+	}, []string{"service_name", "backend_name", "backend_host", "backend_port", "common_name"})
 
 	serviceBackendHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "service_backend_health",
 		Help:      "Health of a backend service",
-	}, []string{"service_name", "backend_name", "backend_host", "backend_port"})
+	}, []string{"service_name", "backend_name", "backend_host", "backend_port", "common_name"})
 
 	serviceBackendStatus = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "service_backend_status",
 		Help:      "Status of a backend service",
-	}, []string{"service_name", "backend_name", "backend_host", "backend_port"})
+	}, []string{"service_name", "backend_name", "backend_host", "backend_port", "common_name"})
 
 	serviceBackendWeight = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "service_backend_weight",
 		Help:      "Weight of a backend service",
-	}, []string{"service_name", "backend_name", "backend_host", "backend_port"})
+	}, []string{"service_name", "backend_name", "backend_host", "backend_port", "common_name"})
 )
 
 type Exporter struct {
@@ -100,11 +100,11 @@ func (e *Exporter) collect() error {
 		}
 
 		serviceHealth.WithLabelValues(serviceName, service.Options.Host, fmt.Sprintf("%d", service.Options.Port),
-			service.Options.Protocol).
+			service.Options.Protocol, service.Options.CommonName).
 			Set(service.Health)
 
 		serviceBackends.WithLabelValues(serviceName, service.Options.Host, fmt.Sprintf("%d", service.Options.Port),
-			service.Options.Protocol).
+			service.Options.Protocol, service.Options.CommonName).
 			Set(float64(len(service.Backends)))
 		for _, backendName := range service.Backends {
 			backend, err := e.ctx.GetBackend(serviceName, backendName)
@@ -113,19 +113,19 @@ func (e *Exporter) collect() error {
 			}
 
 			serviceBackendUptimeTotal.WithLabelValues(serviceName, backendName, backend.Options.Host,
-				fmt.Sprintf("%d", backend.Options.Port)).
+				fmt.Sprintf("%d", backend.Options.Port), service.Options.CommonName).
 				Set(backend.Metrics.Uptime.Seconds())
 
 			serviceBackendHealth.WithLabelValues(serviceName, backendName, backend.Options.Host,
-				fmt.Sprintf("%d", backend.Options.Port)).
+				fmt.Sprintf("%d", backend.Options.Port), service.Options.CommonName).
 				Set(backend.Metrics.Health)
 
 			serviceBackendStatus.WithLabelValues(serviceName, backendName, backend.Options.Host,
-				fmt.Sprintf("%d", backend.Options.Port)).
+				fmt.Sprintf("%d", backend.Options.Port), service.Options.CommonName).
 				Set(float64(backend.Metrics.Status))
 
 			serviceBackendWeight.WithLabelValues(serviceName, backendName, backend.Options.Host,
-				fmt.Sprintf("%d", backend.Options.Port)).
+				fmt.Sprintf("%d", backend.Options.Port), service.Options.CommonName).
 				Set(float64(backend.Options.weight))
 		}
 	}
