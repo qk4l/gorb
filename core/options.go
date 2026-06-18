@@ -52,6 +52,7 @@ type ContextOptions struct {
 // ServiceOptions describe a virtual service.
 type ServiceOptions struct {
 	//service settings
+	CommonName string `json:"common_name" yaml:"common_name"`
 	Host       string `json:"host" yaml:"host"`
 	Port       uint16 `json:"port" yaml:"port"`
 	Protocol   string `json:"protocol" yaml:"protocol"`
@@ -162,6 +163,9 @@ func (o *ServiceOptions) Validate(defaultHost net.IP) error {
 }
 
 func (o *ServiceOptions) CompareStoreOptions(options *ServiceOptions) bool {
+        if o.CommonName != options.CommonName {
+                return false
+        }
 	if o.Host != options.Host {
 		return false
 	}
